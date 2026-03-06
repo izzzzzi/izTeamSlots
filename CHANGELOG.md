@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.1...v1.5.2) (2026-03-06)
+
+
+### Bug Fixes
+
+* security and thread-safety improvements from code review ([6356bfd](https://github.com/izzzzzi/izTeamSlots/commit/6356bfd9eded9379fe1424b20f954cec8e847c8b))
+
 ## [1.5.1](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.0...v1.5.1) (2026-03-06)
 
 
