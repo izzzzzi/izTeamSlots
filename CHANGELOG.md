@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/izzzzzi/izTeamSlots/compare/v1.3.0...v1.3.1) (2026-03-06)
+
+
+### Bug Fixes
+
+* settings menu empty — prevent refreshState from overwriting loaded settings ([ce300c8](https://github.com/izzzzzi/izTeamSlots/commit/ce300c86e3be36048685c90f20abcec27c790284))
+
 # [1.3.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.2.0...v1.3.0) (2026-03-06)
 
 
