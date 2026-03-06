@@ -1,3 +1,10 @@
+## [1.1.6](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.5...v1.1.6) (2026-03-06)
+
+
+### Bug Fixes
+
+* add python-dotenv to requirements.txt (missing dependency) ([697d104](https://github.com/izzzzzi/izTeamSlots/commit/697d104a216ab75a66bd6e6f0ba4921f1bc1704e))
+
 ## [1.1.5](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.4...v1.1.5) (2026-03-06)
 
 
