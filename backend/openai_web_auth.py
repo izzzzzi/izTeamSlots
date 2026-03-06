@@ -39,6 +39,26 @@ _LAST_NAMES = [
 ]
 
 
+def _human_delay(lo: float = 0.3, hi: float = 0.8) -> None:
+    """Случайная пауза, имитирующая человека."""
+    time.sleep(random.uniform(lo, hi))
+
+
+def _human_type(driver: Any, selector: str, text: str) -> None:
+    """Посимвольный ввод текста с человеческими задержками."""
+    elem = WebDriverWait(driver, 30).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+    )
+    try:
+        elem.clear()
+    except Exception:
+        pass
+    for ch in text:
+        elem.send_keys(ch)
+        time.sleep(random.uniform(0.04, 0.12))
+    _human_delay(0.2, 0.5)
+
+
 class Locator:
     def __init__(self, driver: Any, selector: str) -> None:
         self._driver = driver
@@ -324,7 +344,7 @@ def _fill_birthday(
         if page.locator(sel).count() == 0:
             continue
         page.locator(sel).click()
-        time.sleep(0.1)
+        _human_delay(0.15, 0.35)
         for ch in digits:
             page.evaluate(
                 """(args) => {
@@ -337,8 +357,8 @@ def _fill_birthday(
                 }""",
                 {"sel": sel, "ch": ch},
             )
-            time.sleep(0.05)
-        time.sleep(0.1)
+            _human_delay(0.06, 0.15)
+        _human_delay(0.2, 0.5)
 
     values = _check_birthday_values(page)
     log(f"Дата (beforeinput): day={values.get('day')}, month={values.get('month')}, year={values.get('year')}")
@@ -977,18 +997,19 @@ def oauth_login(
 
     try:
         page.goto(authorize_url, wait_until="domcontentloaded", timeout=30000)
-        time.sleep(2)
+        _human_delay(1.5, 3.0)
 
         # Oops fallback
         if _is_oops_error(page):
             if not _handle_oops_retry(page, _log):
                 raise RuntimeError("Страница 'Oops' не исчезла после retry")
-            time.sleep(2)
+            _human_delay(1.5, 3.0)
 
         if "log-in-or-create-account" in page.url and page.locator('a[href="/log-in"]').count() > 0:
+            _human_delay(0.5, 1.2)
             page.locator('a[href="/log-in"]').click()
             _log("Нажато 'Войти'")
-            time.sleep(1)
+            _human_delay(1.0, 2.0)
 
         wait_result = _wait_for_any(
             page,
@@ -998,8 +1019,9 @@ def oauth_login(
         )
 
         if wait_result == 'input[type="email"][name="email"]':
-            page.locator('input[type="email"][name="email"]').fill(email)
-            time.sleep(0.5)
+            _human_delay(0.5, 1.2)
+            _human_type(page._driver, 'input[type="email"][name="email"]', email)
+            _human_delay(0.3, 0.7)
             page.locator('button[type="submit"]').click()
             _log("Email введён, нажато Продолжить")
 
@@ -1011,27 +1033,37 @@ def oauth_login(
             )
 
         if wait_result == 'button[value="passwordless_login_send_otp"]':
+            _human_delay(0.3, 0.8)
             page.locator('button[value="passwordless_login_send_otp"]').click()
             _log("Нажат вход через одноразовый код")
-            time.sleep(1)
+            _human_delay(1.0, 2.0)
             _wait_for_any(page, ['input[name="code"]'], timeout=30000)
             code = poll_for_code(mail_client, mailbox, existing_ids, log=_log)
-            page.locator('input[name="code"]').fill(code)
+            _human_delay(0.3, 0.8)
+            _human_type(page._driver, 'input[name="code"]', code)
+            _human_delay(0.2, 0.5)
             page.locator('button[name="intent"][value="validate"]').click()
         elif wait_result == 'input[name="password"]':
             if page.locator('button[value="passwordless_login_send_otp"]').count() > 0:
+                _human_delay(0.3, 0.8)
                 page.locator('button[value="passwordless_login_send_otp"]').click()
-                time.sleep(1)
+                _human_delay(1.0, 2.0)
                 _wait_for_any(page, ['input[name="code"]'], timeout=30000)
                 code = poll_for_code(mail_client, mailbox, existing_ids, log=_log)
-                page.locator('input[name="code"]').fill(code)
+                _human_delay(0.3, 0.8)
+                _human_type(page._driver, 'input[name="code"]', code)
+                _human_delay(0.2, 0.5)
                 page.locator('button[name="intent"][value="validate"]').click()
             else:
-                page.locator('input[name="password"]').fill(password)
+                _human_delay(0.4, 1.0)
+                _human_type(page._driver, 'input[name="password"]', password)
+                _human_delay(0.3, 0.7)
                 page.locator('button[type="submit"]').click()
         elif wait_result == 'input[name="code"]':
             code = poll_for_code(mail_client, mailbox, existing_ids, log=_log)
-            page.locator('input[name="code"]').fill(code)
+            _human_delay(0.3, 0.8)
+            _human_type(page._driver, 'input[name="code"]', code)
+            _human_delay(0.2, 0.5)
             page.locator('button[name="intent"][value="validate"]').click()
 
         _handle_consent_and_wait(page, _log, callback_wait_seconds=45)
@@ -1210,28 +1242,34 @@ def browser_register(
     page, _context = _launch_page(profile_dir, headless=headless)
     try:
         page.goto(invite_url, wait_until="domcontentloaded")
-        time.sleep(2)
+        _human_delay(1.5, 3.0)
 
         # Oops fallback — страница ошибки вместо формы
         if _is_oops_error(page):
             if not _handle_oops_retry(page, _log):
                 raise RuntimeError("Страница 'Oops' не исчезла после retry")
-            time.sleep(2)
+            _human_delay(1.5, 3.0)
 
         if page.locator('[data-testid="signup-button"]').count() > 0:
+            _human_delay(0.5, 1.5)
             page.locator('[data-testid="signup-button"]').click()
-            time.sleep(2)
+            _human_delay(1.5, 3.0)
 
         if "log-in-or-create-account" in page.url and page.locator('a[href="/create-account"]').count() > 0:
+            _human_delay(0.4, 1.0)
             page.locator('a[href="/create-account"]').click()
-            time.sleep(1)
+            _human_delay(1.0, 2.0)
 
         _wait_for_any(page, ['input[type="email"][name="email"]'], timeout=30000)
-        page.locator('input[type="email"][name="email"]').fill(email)
+        _human_delay(0.5, 1.2)
+        _human_type(page._driver, 'input[type="email"][name="email"]', email)
+        _human_delay(0.3, 0.7)
         page.locator('button[type="submit"]').click()
 
         pwd_selector = _wait_for_any(page, ['input[name="new-password"]', 'input[name="password"]'], timeout=30000)
-        page.locator(pwd_selector).fill(openai_password)
+        _human_delay(0.4, 1.0)
+        _human_type(page._driver, pwd_selector, openai_password)
+        _human_delay(0.3, 0.7)
         page.locator('button[type="submit"]').click()
 
         wait_result = _wait_for_any(
@@ -1244,7 +1282,9 @@ def browser_register(
 
         if wait_result == 'input[name="code"]':
             code = poll_for_code(mail_client, mailbox, existing_ids, log=_log)
-            page.locator('input[name="code"]').fill(code)
+            _human_delay(0.3, 0.8)
+            _human_type(page._driver, 'input[name="code"]', code)
+            _human_delay(0.2, 0.5)
             page.locator('button[name="intent"][value="validate"]').click()
             wait_result = _wait_for_any(
                 page,
@@ -1264,10 +1304,12 @@ def browser_register(
             # Ждём пока fieldset станет enabled (Sentinel антибот)
             _wait_fieldset_enabled(page, _log, timeout=30)
 
-            page.locator('input[name="name"]').fill(name)
+            _human_delay(0.6, 1.5)
+            _human_type(page._driver, 'input[name="name"]', name)
             _log(f"Имя: {name}")
-            _log(f"Дата рождения: {day}.{month}.{year}")
 
+            _human_delay(0.4, 0.9)
+            _log(f"Дата рождения: {day}.{month}.{year}")
             _fill_birthday(page, day, month, year, _log)
 
             # Пере-заполняем имя — дата-стратегии могли добавить мусор
@@ -1276,6 +1318,7 @@ def browser_register(
                 _log(f"Имя испорчено: '{cur_name}', исправляю...")
                 page.locator('input[name="name"]').fill(name)
 
+            _human_delay(0.5, 1.2)
             _submit_about_you_form(page, _log)
             _log("Форма регистрации отправлена")
 
