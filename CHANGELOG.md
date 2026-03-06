@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.2...v1.1.3) (2026-03-06)
+
+
+### Bug Fixes
+
+* Windows compatibility — cross-platform process kill, clipboard, paths, setup ([96a1dc4](https://github.com/izzzzzi/izTeamSlots/commit/96a1dc4e70221c4546254447b8c5bbfe21a37f6b))
+
 ## [1.1.2](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.1...v1.1.2) (2026-03-06)
 
 
