@@ -4,7 +4,7 @@
 
 ## Подготовка окружения
 
-1. Форкните репозиторий
+1. Форкните [izzzzzi/izTeamSlots](https://github.com/izzzzzi/izTeamSlots)
 2. Клонируйте форк:
    ```bash
    git clone https://github.com/<your-username>/izTeamSlots.git
