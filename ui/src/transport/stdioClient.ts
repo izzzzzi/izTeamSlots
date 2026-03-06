@@ -57,6 +57,8 @@ export class StdioRpcClient {
         PYTHONPATH: process.env.PYTHONPATH
           ? `${this.projectRoot}${delimiter}${process.env.PYTHONPATH}`
           : this.projectRoot,
+        PYTHONIOENCODING: "utf-8",
+        PYTHONUTF8: "1",
       },
     })
 
