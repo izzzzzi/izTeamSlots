@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.5...v1.6.0) (2026-03-06)
+
+
+### Features
+
+* **auth:** disable automatic admin login ([930313f](https://github.com/izzzzzi/izTeamSlots/commit/930313f6ef2f06674cc9da6e8d45061dc8c89a93))
+
 ## [1.5.5](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.4...v1.5.5) (2026-03-06)
 
 
