@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/izzzzzi/izTeamSlots/compare/v1.3.1...v1.3.2) (2026-03-06)
+
+
+### Bug Fixes
+
+* force UTF-8 encoding for Python subprocess on Windows ([a31f376](https://github.com/izzzzzi/izTeamSlots/commit/a31f3764a9487a21718e93bddc22f9831179eed4))
+
 ## [1.3.1](https://github.com/izzzzzi/izTeamSlots/compare/v1.3.0...v1.3.1) (2026-03-06)
 
 
