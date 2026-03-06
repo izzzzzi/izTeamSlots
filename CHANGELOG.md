@@ -1,3 +1,10 @@
+## [1.5.3](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.2...v1.5.3) (2026-03-06)
+
+
+### Bug Fixes
+
+* infrastructure hardening — atomic writes, DATA_ROOT, emergency exit, virtual scroll ([683dfd6](https://github.com/izzzzzi/izTeamSlots/commit/683dfd6670b0d4431b639331f2bc205f2fd8348a))
+
 ## [1.5.2](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.1...v1.5.2) (2026-03-06)
 
 
