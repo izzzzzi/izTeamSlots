@@ -67,7 +67,14 @@ function copyToSystemClipboard(text: string): boolean {
   if (!value) return false
 
   try {
-    execFileSync("pbcopy", [], { input: value })
+    const platform = process.platform
+    if (platform === "darwin") {
+      execFileSync("pbcopy", [], { input: value })
+    } else if (platform === "win32") {
+      execFileSync("clip", [], { input: value })
+    } else {
+      execFileSync("xclip", ["-selection", "clipboard"], { input: value })
+    }
     return true
   } catch {
     return false

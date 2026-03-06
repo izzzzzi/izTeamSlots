@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessByStdio } from "node:child_process"
 import type { Readable, Writable } from "node:stream"
 import { randomUUID } from "node:crypto"
-import { dirname, resolve } from "node:path"
+import { delimiter, dirname, resolve } from "node:path"
 import { createInterface } from "node:readline"
 import { fileURLToPath } from "node:url"
 
@@ -41,7 +41,7 @@ export class StdioRpcClient {
 
   constructor(
     private readonly pythonCmd: string =
-      process.env.PYTHON_BIN ?? process.env.PYTHON ?? "python3",
+      process.env.PYTHON_BIN ?? process.env.PYTHON ?? (process.platform === "win32" ? "python" : "python3"),
     private readonly projectRoot: string = process.env.IZTEAMSLOTS_ROOT ?? projectRootFromCurrentFile(),
   ) {}
 
@@ -54,7 +54,7 @@ export class StdioRpcClient {
       env: {
         ...process.env,
         PYTHONPATH: process.env.PYTHONPATH
-          ? `${this.projectRoot}:${process.env.PYTHONPATH}`
+          ? `${this.projectRoot}${delimiter}${process.env.PYTHONPATH}`
           : this.projectRoot,
       },
     })

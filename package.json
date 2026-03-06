@@ -7,8 +7,8 @@
   },
   "scripts": {
     "start": "bun run --cwd ui src/main.ts",
-    "setup": "bash scripts/setup.sh",
-    "postinstall": "bash scripts/setup.sh",
+    "setup": "node scripts/setup.mjs",
+    "postinstall": "node scripts/setup.mjs",
     "typecheck:ui": "npm --prefix ui run typecheck"
   },
   "engines": {

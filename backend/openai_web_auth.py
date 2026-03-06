@@ -504,23 +504,46 @@ def _kill_chrome_for_profile(profile_dir: Path) -> None:
     resolved = str(profile_dir.resolve())
     killed = False
     try:
-        out = subprocess.check_output(["ps", "aux"], text=True, timeout=5)
+        if os.name == "nt":
+            # Windows: use wmic to find chrome processes with this profile
+            out = subprocess.check_output(
+                ["wmic", "process", "where", "name like '%chrome%'", "get", "ProcessId,CommandLine"],
+                text=True, timeout=10,
+            )
+            for line in out.splitlines():
+                if resolved.replace("/", "\\") not in line and resolved not in line:
+                    continue
+                # PID is last token on the line
+                parts = line.strip().split()
+                if not parts:
+                    continue
+                try:
+                    pid = int(parts[-1])
+                    if pid == os.getpid():
+                        continue
+                    subprocess.run(["taskkill", "/F", "/PID", str(pid)], timeout=5,
+                                   capture_output=True)
+                    killed = True
+                except (ValueError, OSError):
+                    pass
+        else:
+            out = subprocess.check_output(["ps", "aux"], text=True, timeout=5)
+            for line in out.splitlines():
+                if resolved not in line:
+                    continue
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+                try:
+                    pid = int(parts[1])
+                    if pid == os.getpid():
+                        continue
+                    os.kill(pid, signal.SIGTERM)
+                    killed = True
+                except (ValueError, ProcessLookupError, PermissionError):
+                    pass
     except Exception:
-        out = ""
-    for line in out.splitlines():
-        if resolved not in line:
-            continue
-        parts = line.split()
-        if len(parts) < 2:
-            continue
-        try:
-            pid = int(parts[1])
-            if pid == os.getpid():
-                continue
-            os.kill(pid, signal.SIGTERM)
-            killed = True
-        except (ValueError, ProcessLookupError, PermissionError):
-            pass
+        pass
     if killed:
         time.sleep(2)
     # Remove stale Chrome lock files so the profile can be reused
