@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.4.0...v1.5.0) (2026-03-06)
+
+
+### Features
+
+* add password_prefix to trickads, use self.password_prefix in boomlify ([f1bfe71](https://github.com/izzzzzi/izTeamSlots/commit/f1bfe71eb7690602894ec5db4878c3115f122a07))
+
 # [1.4.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.3.3...v1.4.0) (2026-03-06)
 
 
