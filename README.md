@@ -83,14 +83,12 @@ izTeamSlots/
 ### npm (рекомендуется)
 
 ```bash
-npm install -g izteamslots
+npm install -g izteamslots@latest
 ```
 
-Или запуск без установки:
+Установщик автоматически поставит Python-зависимости (через [uv](https://docs.astral.sh/uv/)), [Bun](https://bun.sh) и всё остальное.
 
-```bash
-npx izteamslots
-```
+> Chrome и chromedriver скачиваются автоматически при первом запуске через SeleniumBase.
 
 ### Из исходников
 
@@ -100,32 +98,27 @@ cd izTeamSlots
 npm install
 ```
 
-`npm install` / `postinstall` автоматически:
-- Проверит Python 3.11+
-- Установит [uv](https://docs.astral.sh/uv/) если его нет (быстрый Python package manager)
-- Установит Python-зависимости через uv (`seleniumbase`, `requests`)
-- Установит [Bun](https://bun.sh) если его нет + UI-зависимости
-- Создаст `.env` из `.env.example` если его нет
+### Настройка
 
-> Chrome и chromedriver скачиваются автоматически при первом запуске через SeleniumBase.
-
-Если нужно перезапустить setup вручную:
+Создайте файл конфигурации `~/.izteamslots/.env`:
 
 ```bash
-npm run setup
+# Linux / macOS
+mkdir -p ~/.izteamslots
+echo "BOOMLIFY_API_KEY=your_api_key" > ~/.izteamslots/.env
+
+# Windows (PowerShell)
+mkdir "$env:USERPROFILE\.izteamslots" -Force
+echo "BOOMLIFY_API_KEY=your_api_key" > "$env:USERPROFILE\.izteamslots\.env"
 ```
 
-### Настройка .env
-
-```bash
-# Temp mail API (обязательно для создания слотов)
-BOOMLIFY_API_KEY=your_api_key
-```
+Конфиг загружается в порядке приоритета: `~/.izteamslots/.env` > `./.env` > встроенный.
 
 Опциональные переменные:
 
 | Переменная | По умолчанию | Описание |
 |-----------|:------------:|----------|
+| `BOOMLIFY_API_KEY` | — | API-ключ Boomlify (обязательно для слотов) |
 | `BOOMLIFY_DOMAIN` | авто | Домен для временных почт |
 | `BOOMLIFY_TIME` | `permanent` | Время жизни ящика |
 | `SLOT_MAIL_PROVIDER` | `boomlify` | Провайдер почты для слотов |
@@ -134,12 +127,10 @@ BOOMLIFY_API_KEY=your_api_key
 ## Запуск
 
 ```bash
-# Глобальная установка
 izteamslots
-
-# Из исходников
-npm start
 ```
+
+Из исходников: `npm start`
 
 Это запустит OpenTUI frontend через **Bun**, который поднимет Python RPC backend (`python -m backend`) по `stdio`.
 

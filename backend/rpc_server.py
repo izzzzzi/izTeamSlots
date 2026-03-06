@@ -222,7 +222,15 @@ def main() -> int:
 
     from dotenv import load_dotenv
 
-    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+    # Priority: ~/.izteamslots/.env > CWD/.env > package .env
+    home_env = Path.home() / ".izteamslots" / ".env"
+    cwd_env = Path.cwd() / ".env"
+    pkg_env = Path(__file__).resolve().parent.parent / ".env"
+
+    for env_path in (home_env, cwd_env, pkg_env):
+        if env_path.is_file():
+            load_dotenv(env_path)
+            break
 
     server = RPCServer()
     server.serve()
