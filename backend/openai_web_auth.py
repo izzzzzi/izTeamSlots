@@ -605,16 +605,18 @@ def _launch_page(profile_dir: Path, headless: bool = False) -> tuple[Page, Brows
     # "failed to close window in 20 seconds". Гарантируем наличие 2+ табов.
     try:
         handles = list(driver.window_handles)
+        primary_handle = driver.current_window_handle
         # Переключиться на основной (не chrome://) таб
         if len(handles) > 1:
             for h in handles:
                 driver.switch_to.window(h)
                 if not driver.current_url.startswith("chrome://"):
+                    primary_handle = h
                     break
         # Если только 1 таб — открыть второй пустой для UC mode
         if len(driver.window_handles) < 2:
             driver.execute_script("window.open('about:blank')")
-            driver.switch_to.window(driver.window_handles[0])
+        driver.switch_to.window(primary_handle)
     except Exception:
         pass
 
@@ -673,6 +675,7 @@ def open_browser(
 
     _log(f"Открываю {url}...")
     driver.get(url)
+    _activate_best_tab(driver, [url, urllib.parse.urlparse(url).netloc])
 
     WebDriverWait(driver, 30).until(
         lambda d: d.execute_script("return document.readyState") in {"interactive", "complete"}
@@ -709,6 +712,42 @@ def _decode_jwt_payload(token: str) -> dict | None:
         return json.loads(decoded)
     except Exception:
         return None
+
+
+def _activate_best_tab(driver: Any, preferred_url_parts: list[str] | None = None) -> None:
+    preferred = [part for part in (preferred_url_parts or []) if part]
+
+    try:
+        handles = list(driver.window_handles)
+    except Exception:
+        return
+
+    best_handle: str | None = None
+    fallback_handle: str | None = None
+
+    for handle in handles:
+        try:
+            driver.switch_to.window(handle)
+            current_url = (driver.current_url or "").strip()
+        except Exception:
+            continue
+
+        if not current_url.startswith("chrome://") and fallback_handle is None:
+            fallback_handle = handle
+
+        if any(part in current_url for part in preferred):
+            best_handle = handle
+            break
+
+        if current_url and current_url not in {"about:blank", "data:,"}:
+            best_handle = handle
+
+    target = best_handle or fallback_handle
+    if target:
+        try:
+            driver.switch_to.window(target)
+        except Exception:
+            pass
 
 
 def _start_callback_server(state: str) -> tuple[HTTPServer, str, dict[str, str | None]]:
@@ -1132,6 +1171,15 @@ def oauth_login_manual(
 
     try:
         page.goto(authorize_url, wait_until="domcontentloaded", timeout=30000)
+        _activate_best_tab(
+            _context.driver,
+            [
+                "chatgpt.com",
+                "auth.openai.com",
+                "login_with",
+                redirect_uri,
+            ],
+        )
         if expected_email:
             _log(f"В браузере завершите вход вручную для {expected_email}.")
         else:
