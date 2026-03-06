@@ -1,3 +1,10 @@
+## [1.1.4](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.3...v1.1.4) (2026-03-06)
+
+
+### Bug Fixes
+
+* use Node.js bin entry instead of .sh (fixes Windows npm bin) ([98f7336](https://github.com/izzzzzi/izTeamSlots/commit/98f7336a4706e84174fc90be8d628278f690e0d0))
+
 ## [1.1.3](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.2...v1.1.3) (2026-03-06)
 
 
