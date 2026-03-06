@@ -79,13 +79,27 @@ izTeamSlots/
 
 ## Установка
 
+### npm (рекомендуется)
+
+```bash
+npm install -g izteamslots
+```
+
+Или запуск без установки:
+
+```bash
+npx izteamslots
+```
+
+### Из исходников
+
 ```bash
 git clone https://github.com/izzzzzi/izTeamSlots.git
 cd izTeamSlots
 npm install
 ```
 
-`npm install` автоматически запустит setup-скрипт, который:
+`npm install` / `postinstall` автоматически:
 - Проверит Python 3.11+
 - Установит [uv](https://docs.astral.sh/uv/) если его нет (быстрый Python package manager)
 - Установит Python-зависимости через uv (`seleniumbase`, `requests`)
@@ -119,6 +133,10 @@ BOOMLIFY_API_KEY=your_api_key
 ## Запуск
 
 ```bash
+# Глобальная установка
+izteamslots
+
+# Из исходников
 npm start
 ```
 
@@ -223,3 +241,9 @@ flowchart TD
 - Проект хранит токены и браузерные профили локально на диске.
 - Не публикуйте папки `accounts/` и `codex/` в публичные репозитории.
 - Для стабильной работы перелогина у worker должен быть `openai_password`.
+
+---
+
+## Участие в разработке
+
+См. [CONTRIBUTING.md](CONTRIBUTING.md).
