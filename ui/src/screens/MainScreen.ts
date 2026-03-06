@@ -14,8 +14,8 @@ const EMPTY_STATE: AppState = {
 }
 
 const HERO_LOGO = [
-  " izTeamSlots",
-  " Локальный центр управления слотами",
+  "izTeamSlots",
+  "Локальный центр управления слотами",
 ].join("\n")
 
 type RpcJobResult = { job_id: string }
