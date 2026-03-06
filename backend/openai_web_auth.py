@@ -151,12 +151,17 @@ class Page:
     @property
     def url(self) -> str:
         try:
-            return self._driver.current_url
+            current_url = self._driver.current_url
+            if current_url.startswith("chrome://") or current_url in {"about:blank", "data:,"}:
+                _activate_best_tab(self._driver)
+                current_url = self._driver.current_url
+            return current_url
         except Exception:
             return ""
 
     def goto(self, url: str, wait_until: str | None = None, timeout: int | None = None) -> None:
         self._driver.get(url)
+        _activate_best_tab(self._driver, [url, urllib.parse.urlparse(url).netloc])
         if wait_until in {"domcontentloaded", "load"}:
             t = (timeout or 30000) / 1000
             WebDriverWait(self._driver, t).until(
@@ -1184,20 +1189,13 @@ def oauth_login_manual(
             _log(f"В браузере завершите вход вручную для {expected_email}.")
         else:
             _log("В браузере завершите вход вручную.")
-        _log("Можно ввести email, пароль или код подтверждения вручную прямо в открытом окне.")
-        _log("После успешного входа дождусь OAuth callback и сохраню сессию автоматически.")
+        _log("Я больше ничего не нажимаю: email, пароль, код и consent подтверждайте сами в браузере.")
+        _log("Как только произойдёт переход на localhost callback, я перехвачу код и сохраню сессию.")
 
-        _handle_consent_and_wait(page, _log, callback_wait_seconds=timeout_seconds)
         auth_code = _wait_for_callback(holder, timeout=timeout_seconds)
         _log("Authorization code получен")
 
         session_result = _exchange_oauth_code(auth_code, redirect_uri, code_verifier)
-        _bootstrap_chatgpt_session(
-            page,
-            _log,
-            timeout_seconds=min(timeout_seconds, 300),
-            interactive=True,
-        )
         return page, session_result
     except Exception:
         try:

@@ -94,6 +94,22 @@ npm cache clean --force && npm install -g izteamslots@latest
 
 > Chrome и chromedriver скачиваются автоматически при первом запуске через SeleniumBase.
 
+### Где лежат данные после `npm install -g`
+
+При глобальной установке runtime-данные сохраняются не в папку пакета, а в пользовательскую директорию `~/.izteamslots`.
+
+- `codex/`:
+  - Windows: `C:\Users\<USER>\.izteamslots\codex`
+  - macOS / Linux: `~/.izteamslots/codex`
+- `.env`:
+  - Windows: `C:\Users\<USER>\.izteamslots\.env`
+  - macOS / Linux: `~/.izteamslots/.env`
+- аккаунты и профили браузера:
+  - Windows: `C:\Users\<USER>\.izteamslots\accounts`
+  - macOS / Linux: `~/.izteamslots/accounts`
+
+Если вы обновляете старую версию, `codex`-файлы могут временно лежать ещё и внутри директории пакета. В актуальной версии основным путём считается именно `~/.izteamslots`.
+
 ### Из исходников
 
 ```bash
@@ -237,4 +253,3 @@ flowchart TD
 - Проект хранит токены и браузерные профили локально на диске.
 - Не публикуйте папки `accounts/` и `codex/` в публичные репозитории.
 - Для стабильной работы перелогина у worker должен быть `openai_password`.
-

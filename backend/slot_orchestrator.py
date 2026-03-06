@@ -101,7 +101,13 @@ class SlotManager:
             raise RuntimeError("account_id/access_token не установлены — сначала login_admin()")
         return ChatGPTWorkspaceAPI(page, self.account_id, self.access_token)
 
-    def _finalize_admin_login(self, page: Page, session: dict[str, Any]) -> None:
+    def _finalize_admin_login(
+        self,
+        page: Page,
+        session: dict[str, Any],
+        *,
+        manual_web_flow: bool = False,
+    ) -> None:
         if not self._admin:
             raise RuntimeError(f"Админ {self.admin_email} не найден в AccountStore")
 
@@ -115,37 +121,40 @@ class SlotManager:
             workspaces = get_workspaces(page, log=self._log)
             if workspaces:
                 self._admin.workspaces = workspaces
-                available_ids = {str(ws["workspace_id"]) for ws in workspaces if ws.get("workspace_id")}
                 self._log(
                     "Доступные workspace: "
                     + ", ".join(f"{ws.get('name', '?')} [{ws.get('workspace_id', '?')}]" for ws in workspaces)
                 )
 
-                target_workspace_id = self._admin.workspace_id if self._admin.workspace_id in available_ids else None
-                if self._admin.workspace_id and not target_workspace_id:
-                    self._log(
-                        f"[предупреждение] Workspace из OAuth ({self._admin.workspace_id}) не найден среди кнопок на странице"
-                    )
-
-                if not target_workspace_id:
-                    for ws in workspaces:
-                        name = str(ws.get("name", ""))
-                        workspace_id = str(ws.get("workspace_id", ""))
-                        if workspace_id and "Личная" not in name and "Personal" not in name:
-                            target_workspace_id = workspace_id
-                            break
-
-                if not target_workspace_id and workspaces:
-                    target_workspace_id = str(workspaces[0]["workspace_id"])
-
-                self._admin.workspace_id = target_workspace_id
-                if target_workspace_id:
-                    select_workspace(page, target_workspace_id, log=self._log)
-                    self._admin.account_id = target_workspace_id
-                    if not ensure_chatgpt_web_session(page, self._log, timeout_seconds=45, open_home=True):
-                        raise RuntimeError(
-                            "Не удалось подтвердить web-сессию chatgpt.com после выбора workspace"
+                if manual_web_flow:
+                    self._log("Ручной режим: workspace не выбираю автоматически.")
+                else:
+                    available_ids = {str(ws["workspace_id"]) for ws in workspaces if ws.get("workspace_id")}
+                    target_workspace_id = self._admin.workspace_id if self._admin.workspace_id in available_ids else None
+                    if self._admin.workspace_id and not target_workspace_id:
+                        self._log(
+                            f"[предупреждение] Workspace из OAuth ({self._admin.workspace_id}) не найден среди кнопок на странице"
                         )
+
+                    if not target_workspace_id:
+                        for ws in workspaces:
+                            name = str(ws.get("name", ""))
+                            workspace_id = str(ws.get("workspace_id", ""))
+                            if workspace_id and "Личная" not in name and "Personal" not in name:
+                                target_workspace_id = workspace_id
+                                break
+
+                    if not target_workspace_id and workspaces:
+                        target_workspace_id = str(workspaces[0]["workspace_id"])
+
+                    self._admin.workspace_id = target_workspace_id
+                    if target_workspace_id:
+                        select_workspace(page, target_workspace_id, log=self._log)
+                        self._admin.account_id = target_workspace_id
+                        if not ensure_chatgpt_web_session(page, self._log, timeout_seconds=45, open_home=True):
+                            raise RuntimeError(
+                                "Не удалось подтвердить web-сессию chatgpt.com после выбора workspace"
+                            )
 
         close_browser(page, log=self._log)
         self._admin.last_login = datetime.now(timezone.utc).isoformat()
@@ -161,7 +170,7 @@ class SlotManager:
         self._log("Админ авторизован!")
 
     def finalize_admin_session(self, page: Page, session: dict[str, Any]) -> None:
-        self._finalize_admin_login(page, session)
+        self._finalize_admin_login(page, session, manual_web_flow=True)
 
     def login_admin(self) -> None:
         """Логин админа через OAuth PKCE — получаем все токены (access, id, refresh)."""
@@ -198,7 +207,7 @@ class SlotManager:
         )
         if session.get("email") and session["email"] != self._admin.email:
             self._log(f"[предупреждение] Вошли как {session['email']}, а не как {self._admin.email}")
-        self._finalize_admin_login(page, session)
+        self._finalize_admin_login(page, session, manual_web_flow=True)
 
     def create_slots(self, count: int) -> list[WorkerAccount]:
         """Создать N временных почт."""
