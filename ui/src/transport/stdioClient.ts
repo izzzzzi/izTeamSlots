@@ -51,6 +51,7 @@ export class StdioRpcClient {
     this.proc = spawn(this.pythonCmd, ["-m", "backend"], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: this.projectRoot,
+      shell: process.platform === "win32",
       env: {
         ...process.env,
         PYTHONPATH: process.env.PYTHONPATH
