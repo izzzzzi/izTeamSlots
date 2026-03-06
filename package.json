@@ -1,6 +1,6 @@
 {
   "name": "izteamslots",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "ChatGPT Team slot management — automated invite, register, OAuth login & codex token pipeline",
   "bin": {
     "izteamslots": "bin/izteamslots.mjs"

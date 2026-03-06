@@ -1,3 +1,10 @@
+## [1.5.4](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.3...v1.5.4) (2026-03-06)
+
+
+### Bug Fixes
+
+* Windows compatibility — version check, wmic removal, CI matrix, venv resolution ([342b515](https://github.com/izzzzzi/izTeamSlots/commit/342b515e86ac7e674fed6c25c6dece20eb40b0ea))
+
 ## [1.5.3](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.2...v1.5.3) (2026-03-06)
 
 
