@@ -1,4 +1,4 @@
-"""Pluggable mail provider system.
+"""Pluggable mail provider system with auto-discovery.
 
 Usage::
 
@@ -17,18 +17,17 @@ Select provider via env var or name::
 
     provider = create_provider("imap", host="imap.example.com")
 
-Available providers:
-    trickads - trickadsagencyltd.com temp mail (generic/default)
-    boomlify - Boomlify temp mail API (slots default)
-    imap     - any IMAP server (env: IMAP_HOST, IMAP_PORT, IMAP_SSL)
-
 Custom providers:
-    Subclass ``MailProvider`` from ``backend.mail.base`` and implement
-    ``generate()`` and ``inbox()``.
+    Create a .py file in backend/mail/, subclass MailProvider, set ``name``
+    and optionally ``password_prefix``. The provider will be discovered
+    automatically — no edits to __init__.py needed.
 """
 from __future__ import annotations
 
+import importlib
 import os
+import pkgutil
+from pathlib import Path
 from typing import Any
 
 from .base import Inbox, Mail, MailAuthError, Mailbox, MailError, MailProvider, MailServiceUnavailable
@@ -46,7 +45,38 @@ __all__ = [
     "create_slot_provider",
 ]
 
-_BUILTIN_PROVIDERS = ("boomlify", "trickads", "imap")
+_REGISTRY: dict[str, type[MailProvider]] | None = None
+
+
+def _discover_providers() -> dict[str, type[MailProvider]]:
+    """Scan this package for MailProvider subclasses and build a registry."""
+    registry: dict[str, type[MailProvider]] = {}
+    package_dir = Path(__file__).parent
+
+    for module_info in pkgutil.iter_modules([str(package_dir)]):
+        if module_info.name.startswith("_") or module_info.name == "base":
+            continue
+        try:
+            module = importlib.import_module(f".{module_info.name}", __package__)
+        except Exception:
+            continue
+        for attr in vars(module).values():
+            if (
+                isinstance(attr, type)
+                and issubclass(attr, MailProvider)
+                and attr is not MailProvider
+                and attr.name != "base"
+            ):
+                registry[attr.name] = attr
+
+    return registry
+
+
+def _get_registry() -> dict[str, type[MailProvider]]:
+    global _REGISTRY  # noqa: PLW0603
+    if _REGISTRY is None:
+        _REGISTRY = _discover_providers()
+    return _REGISTRY
 
 
 def create_provider(name: str | None = None, **kwargs: Any) -> MailProvider:
@@ -58,23 +88,12 @@ def create_provider(name: str | None = None, **kwargs: Any) -> MailProvider:
         **kwargs: Passed to provider constructor.
     """
     provider_name = name or os.environ.get("MAIL_PROVIDER", "trickads")
-
-    if provider_name == "boomlify":
-        from .boomlify import BoomlifyProvider
-        return BoomlifyProvider(**kwargs)
-
-    if provider_name == "trickads":
-        from .trickads import TrickAdsProvider
-        return TrickAdsProvider(**kwargs)
-
-    if provider_name == "imap":
-        from .imap import IMAPProvider
-        return IMAPProvider(**kwargs)
-
-    raise ValueError(
-        f"Unknown mail provider: {provider_name!r}. "
-        f"Available: {', '.join(_BUILTIN_PROVIDERS)}"
-    )
+    registry = _get_registry()
+    cls = registry.get(provider_name)
+    if cls is None:
+        available = ", ".join(sorted(registry)) or "(none)"
+        raise ValueError(f"Unknown mail provider: {provider_name!r}. Available: {available}")
+    return cls(**kwargs)
 
 
 def create_slot_provider(name: str | None = None, **kwargs: Any) -> MailProvider:
@@ -89,10 +108,14 @@ def create_slot_provider(name: str | None = None, **kwargs: Any) -> MailProvider
 def create_provider_for_mailbox(mailbox: Mailbox, **kwargs: Any) -> MailProvider:
     """Pick provider based on stored mailbox credentials.
 
-    Boomlify mailboxes store their email id inside ``Mailbox.password`` as
-    ``boomlify:<uuid>``. Everything else falls back to the generic provider.
+    Checks ``password_prefix`` of each registered provider first,
+    then falls back to the default provider.
     """
     password = mailbox.password.strip()
-    if password.startswith("boomlify:"):
-        return create_provider("boomlify", **kwargs)
+    registry = _get_registry()
+
+    for cls in registry.values():
+        if cls.password_prefix and password.startswith(cls.password_prefix):
+            return cls(**kwargs)
+
     return create_provider(**kwargs)

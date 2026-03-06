@@ -63,6 +63,7 @@ class MailProvider(ABC):
     """
 
     name: str = "base"
+    password_prefix: str = ""
 
     @abstractmethod
     def generate(self) -> Mailbox:

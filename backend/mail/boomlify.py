@@ -50,6 +50,7 @@ class BoomlifyProvider(MailProvider):
     """Temporary email via Boomlify API."""
 
     name = "boomlify"
+    password_prefix = "boomlify:"
 
     def __init__(
         self,
