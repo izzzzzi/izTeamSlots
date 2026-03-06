@@ -847,7 +847,10 @@ export class MainScreen {
       else if (optionId === "menu_mail") this.menuName = "mail"
       else if (optionId === "menu_settings") {
         this.menuName = "settings"
+        this.menuCtx = {}
+        this.selectedIndex = 0
         await this.loadSettings()
+        return
       }
       else if (optionId === "menu_exit") { await this.exit(); return }
       this.menuCtx = {}
