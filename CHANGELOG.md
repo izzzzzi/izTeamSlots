@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.3.3...v1.4.0) (2026-03-06)
+
+
+### Features
+
+* auto-discovery for mail providers — no manual registration needed ([ca54650](https://github.com/izzzzzi/izTeamSlots/commit/ca54650a42696b714c79cf328da5d58b5e2d1f60))
+
 ## [1.3.3](https://github.com/izzzzzi/izTeamSlots/compare/v1.3.2...v1.3.3) (2026-03-06)
 
 
