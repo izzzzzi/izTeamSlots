@@ -3,6 +3,7 @@ export type MenuName =
   | "admins"
   | "slots"
   | "mail"
+  | "settings"
   | "pick_admin"
   | "pick_worker"
   | "pick_account"
@@ -46,10 +47,18 @@ export interface MailAccountRow {
   email: string
 }
 
+export interface SettingItem {
+  key: string
+  label: string
+  value: string
+  masked: string
+}
+
 export interface AppState {
   admins: AdminRow[]
   workers: WorkerRow[]
   accounts: MailAccountRow[]
+  settings?: SettingItem[]
 }
 
 export interface MenuContext {

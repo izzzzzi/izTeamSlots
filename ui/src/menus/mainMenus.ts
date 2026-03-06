@@ -6,6 +6,7 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
       { id: "menu_admins", label: "Админы", hint: "Доступы, токены, браузерные профили" },
       { id: "menu_slots", label: "Слоты", hint: "Создание, перелогин и обслуживание" },
       { id: "menu_mail", label: "Почта", hint: "Ящики и входящие письма" },
+      { id: "menu_settings", label: "Настройки", hint: "API-ключи и провайдеры почты" },
       { id: "menu_exit", label: "Выход", hint: "Закрыть приложение" },
     ]
   }
@@ -62,6 +63,16 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
     }))
   }
 
+  if (menuName === "settings") {
+    return [
+      ...(state.settings ?? []).map((s: { key: string; label: string; masked: string }) => ({
+        id: `setting:${s.key}`,
+        label: s.label,
+        hint: s.masked || "не задан",
+      })),
+    ]
+  }
+
   if (menuName === "confirm") {
     return [
       { id: "confirm_yes", label: "Да, удалить", hint: "Подтвердить необратимое действие", destructive: true },
@@ -110,6 +121,7 @@ export function getScreenTitle(menuName: MenuName, ctx: MenuContext): string {
   if (menuName === "admins") return "Администраторы"
   if (menuName === "slots") return "Слоты"
   if (menuName === "mail") return "Почтовые ящики"
+  if (menuName === "settings") return "Настройки"
   if (menuName === "pick_admin") return ctx.title ?? "Выбор администратора"
   if (menuName === "pick_worker") return ctx.title ?? "Выбор слота"
   if (menuName === "pick_account") return ctx.title ?? "Выбор аккаунта"
@@ -139,6 +151,8 @@ export function getScreenDescription(menuName: MenuName, state: AppState, ctx: M
       ? "Почтовые ящики появятся после создания админов и слотов."
       : "Выберите аккаунт слева, чтобы забрать входящие письма."
   }
+
+  if (menuName === "settings") return "Настройте API-ключи и провайдеры почты. Enter для редактирования."
 
   if (menuName === "pick_admin") return ctx.title ?? "Выберите администратора для следующего действия."
   if (menuName === "pick_worker") return ctx.title ?? "Выберите слот для следующего действия."
@@ -200,7 +214,7 @@ export function getTable(menuName: MenuName, state: AppState, ctx: MenuContext):
 }
 
 export function getHint(menuName: MenuName, _ctx: MenuContext): string {
-  if (menuName === "main") return "↑↓ или 1-4: выбор  Enter: открыть  r: обновить  q: выход"
+  if (menuName === "main") return "↑↓ или 1-5: выбор  Enter: открыть  r: обновить  q: выход"
   if (menuName === "confirm") return "Enter: подтвердить  Esc: отмена"
   return "↑↓ или 1-9: выбор  Enter: действие  Esc: назад  r: обновить  y: копировать лог"
 }
@@ -212,6 +226,7 @@ export function parentMenu(menuName: MenuName, ctx: MenuContext): MenuName {
     admins: "main",
     slots: "main",
     mail: "main",
+    settings: "main",
     pick_admin: "admins",
     pick_worker: "slots",
     pick_account: "mail",

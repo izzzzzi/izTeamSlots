@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import threading
 import traceback
+from pathlib import Path
 from typing import Any
 
 from .file_logger import FileLogger
@@ -50,6 +52,59 @@ class RPCServer:
 
     def _run_job(self, title: str, fn):
         return self.jobs.start(title, fn)
+
+    _SETTINGS_KEYS = [
+        ("BOOMLIFY_API_KEY", "Boomlify API ключ"),
+        ("BOOMLIFY_DOMAIN", "Домен временной почты"),
+        ("BOOMLIFY_TIME", "Время жизни ящика"),
+        ("SLOT_MAIL_PROVIDER", "Провайдер почты для слотов"),
+        ("MAIL_PROVIDER", "Провайдер почты для админов"),
+    ]
+
+    @staticmethod
+    def _settings_path() -> Path:
+        return Path.home() / ".izteamslots" / ".env"
+
+    def _get_settings(self) -> dict[str, Any]:
+        items = []
+        for key, label in self._SETTINGS_KEYS:
+            value = os.environ.get(key, "")
+            masked = ""
+            if value:
+                masked = value[:4] + "***" + value[-4:] if len(value) > 12 else "***"
+            items.append({"key": key, "label": label, "value": value, "masked": masked})
+        return {"items": items, "path": str(self._settings_path())}
+
+    def _set_setting(self, key: str, value: str) -> None:
+        allowed = {k for k, _ in self._SETTINGS_KEYS}
+        if key not in allowed:
+            raise RPCError(-32602, "Unknown setting", {"key": key})
+
+        env_path = self._settings_path()
+        env_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Read existing lines
+        lines: list[str] = []
+        if env_path.is_file():
+            lines = env_path.read_text(encoding="utf-8").splitlines()
+
+        # Update or append
+        found = False
+        for i, line in enumerate(lines):
+            if line.startswith(f"{key}=") or line.startswith(f"{key} ="):
+                lines[i] = f"{key}={value}"
+                found = True
+                break
+        if not found:
+            lines.append(f"{key}={value}")
+
+        env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        # Update runtime env
+        if value:
+            os.environ[key] = value
+        elif key in os.environ:
+            del os.environ[key]
 
     def _handle_request(self, req: RPCRequest) -> dict[str, Any]:
         m = req.method
@@ -167,6 +222,15 @@ class RPCServer:
                 lambda ctx: self.facade.fetch_mail(email, ctx.log),
             )
             return make_success_response(req.request_id, {"job_id": job_id})
+
+        if m == "settings.get":
+            return make_success_response(req.request_id, self._get_settings())
+
+        if m == "settings.set":
+            key = self._as_str_param(p, "key")
+            value = self._as_str_param(p, "value")
+            self._set_setting(key, value)
+            return make_success_response(req.request_id, {"ok": True})
 
         if m == "shutdown":
             self.facade.shutdown()

@@ -127,6 +127,7 @@ function getMenuOptionDescription(option: MenuOption | undefined): string {
   if (optionId === "menu_admins") return "Добавление, логин и обслуживание администраторов."
   if (optionId === "menu_slots") return "Создание слотов, перелогин и работа с профилями."
   if (optionId === "menu_mail") return "Проверка входящих писем админов и слотов."
+  if (optionId === "menu_settings") return "API-ключи и настройки провайдеров почты."
   if (optionId === "menu_exit") return "Аккуратно завершить интерфейс."
   if (optionId === "adm_add") return "Создать нового админа: в авто-режиме ввод в TUI, в ручном режиме вход сразу в браузере."
   if (optionId === "adm_relogin") return "Выбрать админа и режим перелогина: автоматический или ручной."
@@ -368,6 +369,17 @@ export class MainScreen {
       }
     }
 
+    this.rebuildMenuOptions()
+    this.render()
+  }
+
+  private async loadSettings() {
+    try {
+      const result = await this.rpc.request<{ items: Array<{ key: string; label: string; value: string; masked: string }> }>("settings.get")
+      this.state = { ...this.state, settings: result.items }
+    } catch (error) {
+      this.pushLog(`Ошибка загрузки настроек: ${String(error)}`)
+    }
     this.rebuildMenuOptions()
     this.render()
   }
@@ -833,6 +845,10 @@ export class MainScreen {
       if (optionId === "menu_admins") this.menuName = "admins"
       else if (optionId === "menu_slots") this.menuName = "slots"
       else if (optionId === "menu_mail") this.menuName = "mail"
+      else if (optionId === "menu_settings") {
+        this.menuName = "settings"
+        await this.loadSettings()
+      }
       else if (optionId === "menu_exit") { await this.exit(); return }
       this.menuCtx = {}
       this.selectedIndex = 0
@@ -900,6 +916,22 @@ export class MainScreen {
         this.goToPicker("pick_worker", "slots", "delete_worker", "Удалить слот")
         return
       }
+    }
+
+    if (this.menuName === "settings" && optionId.startsWith("setting:")) {
+      const key = optionId.split(":", 2)[1]
+      const current = this.state.settings?.find(s => s.key === key)
+      const newValue = await this.promptInput(`${current?.label ?? key}`, key.includes("KEY"))
+      if (newValue === null) return
+      try {
+        await this.rpc.request("settings.set", { key, value: newValue })
+        this.pushLog(`Настройка ${key} обновлена`)
+      } catch (error) {
+        this.pushLog(`Ошибка: ${String(error)}`)
+      }
+      await this.loadSettings()
+      this.render()
+      return
     }
 
     if (this.menuName === "mail" && optionId.startsWith("mail_pick:")) {
