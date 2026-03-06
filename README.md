@@ -60,58 +60,51 @@ izTeamSlots/
 │       └── menus/                  # Меню, таблицы, форматирование
 ├── accounts/                       # Данные аккаунтов (runtime)
 ├── codex/                          # Codex-файлы (runtime)
-└── README.ru.md
+└── README.md
 ```
 
 ---
 
+## Установка
+
+```bash
+git clone https://github.com/izzzzzi/izTeamSlots.git
+cd izTeamSlots
+npm install
+```
+
+`npm install` автоматически запустит setup-скрипт, который:
+- Проверит Python 3.11+, pip, Bun, Chrome
+- Установит Python-зависимости (`seleniumbase`, `requests`)
+- Установит UI-зависимости (`bun install`)
+- Создаст `.env` из `.env.example` если его нет
+
+Если нужно перезапустить setup вручную:
+
+```bash
+npm run setup
+```
+
+### Настройка .env
+
+```bash
+# Temp mail API (обязательно для создания слотов)
+BOOMLIFY_API_KEY=your_api_key
+```
+
+Опциональные переменные:
+
+| Переменная | По умолчанию | Описание |
+|-----------|:------------:|----------|
+| `BOOMLIFY_DOMAIN` | авто | Домен для временных почт |
+| `BOOMLIFY_TIME` | `permanent` | Время жизни ящика |
+| `SLOT_MAIL_PROVIDER` | `boomlify` | Провайдер почты для слотов |
+| `MAIL_PROVIDER` | `trickads` | Провайдер почты для админов |
+
 ## Запуск
 
-### 1) Python зависимости
-
 ```bash
-pip install seleniumbase requests
-```
-
-### 1.1) Настроить temp-mail API
-
-По умолчанию **слоты** теперь используют **Boomlify Temp Mail API**.
-Это не меняет автоматически провайдер для админской почты.
-
-```bash
-export BOOMLIFY_API_KEY="your_api_key"
-```
-
-Опционально:
-
-```bash
-export BOOMLIFY_TIME="permanent"   # по умолчанию permanent
-export BOOMLIFY_DOMAIN="your.domain"
-export SLOT_MAIL_PROVIDER="boomlify"
-```
-
-Если нужен старый generic/admin provider, его можно оставить или включить явно:
-
-```bash
-export MAIL_PROVIDER="trickads"
-```
-
-### 2) Node.js зависимости UI
-
-```bash
-npm --prefix ui install
-```
-
-### 3) Убедиться, что установлен Bun
-
-```bash
-bun --version
-```
-
-### 4) Запуск приложения
-
-```bash
-python app.py
+npm start
 ```
 
 Это запустит OpenTUI frontend через **Bun**, который поднимет Python RPC backend (`python -m backend`) по `stdio`.

@@ -2,8 +2,14 @@
   "name": "izteamslots",
   "version": "1.0.0",
   "private": true,
+  "description": "ChatGPT Team slot management — automated invite, register, OAuth login & codex token pipeline",
   "scripts": {
     "start": "bun run --cwd ui src/main.ts",
+    "setup": "bash scripts/setup.sh",
+    "postinstall": "bash scripts/setup.sh",
     "typecheck:ui": "npm --prefix ui run typecheck"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
