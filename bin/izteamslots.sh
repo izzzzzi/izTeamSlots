@@ -3,6 +3,13 @@ set -e
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# Resolve Python from venv
+if [ -f "$ROOT/.venv/bin/python" ]; then
+  export PYTHON_BIN="$ROOT/.venv/bin/python"
+elif [ -f "$ROOT/.venv/Scripts/python.exe" ]; then
+  export PYTHON_BIN="$ROOT/.venv/Scripts/python.exe"
+fi
+
 # Ensure bun is available
 if ! command -v bun &>/dev/null; then
   if [ -d "$HOME/.bun/bin" ]; then

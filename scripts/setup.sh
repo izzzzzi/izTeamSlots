@@ -43,9 +43,17 @@ fi
 command -v uv &>/dev/null || fail "uv install failed. Install manually: https://docs.astral.sh/uv"
 ok "uv: $(uv --version)"
 
-# ── Python deps ─────────────────────────────────────────
+# ── Python venv + deps ──────────────────────────────────
+VENV_DIR="$ROOT/.venv"
+echo "Setting up Python venv..."
+if [ ! -d "$VENV_DIR" ]; then
+  uv venv "$VENV_DIR" --python "$PYTHON" -q
+fi
+ok "venv: $VENV_DIR"
+
 echo "Installing Python dependencies..."
-uv pip install --system -q -r "$ROOT/requirements.txt"
+uv pip install -q --python "$VENV_DIR/bin/python" -r "$ROOT/requirements.txt" 2>/dev/null \
+  || uv pip install -q --python "$VENV_DIR/Scripts/python.exe" -r "$ROOT/requirements.txt"
 ok "Python deps installed"
 
 # ── Bun ─────────────────────────────────────────────────
@@ -78,5 +86,5 @@ echo ""
 echo -e "${GREEN}Setup complete!${NC}"
 echo ""
 echo "  Start:  npm start"
-echo "  Or:     bun run --cwd ui src/main.ts"
+echo "  Or:     izteamslots"
 echo ""
