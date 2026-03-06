@@ -74,10 +74,12 @@ ok "UI deps installed"
 cd "$ROOT"
 
 # ── .env ────────────────────────────────────────────────
-if [ ! -f "$ROOT/.env" ]; then
+SETTINGS_DIR="$HOME/.izteamslots"
+if [ ! -f "$SETTINGS_DIR/.env" ]; then
+  mkdir -p "$SETTINGS_DIR"
   if [ -f "$ROOT/.env.example" ]; then
-    cp "$ROOT/.env.example" "$ROOT/.env"
-    warn ".env created from .env.example — edit it with your API keys"
+    cp "$ROOT/.env.example" "$SETTINGS_DIR/.env"
+    warn ".env created at $SETTINGS_DIR/.env — edit it with your API keys"
   fi
 fi
 

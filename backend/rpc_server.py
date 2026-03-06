@@ -214,6 +214,7 @@ class RPCServer:
             return make_success_response(req.request_id, {"ok": True})
 
         if m == "shutdown":
+            self.jobs.wait_all(timeout=10)
             self.facade.shutdown()
             return make_success_response(req.request_id, {"ok": True})
 
@@ -272,7 +273,6 @@ def main() -> int:
     for env_path in (home_env, cwd_env, pkg_env):
         if env_path.is_file():
             load_dotenv(env_path)
-            break
 
     server = RPCServer()
     server.serve()

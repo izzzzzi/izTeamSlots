@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import PROJECT_ROOT
+from . import DATA_ROOT
 
 
 def _timestamp() -> str:
@@ -23,7 +23,7 @@ def _safe_title(value: str) -> str:
 
 class FileLogger:
     def __init__(self, root: Path | None = None) -> None:
-        self.root = root or (PROJECT_ROOT / "logs")
+        self.root = root or (DATA_ROOT / "logs")
         self.jobs_dir = self.root / "jobs"
         self.app_log = self.root / "app.log"
         self._lock = threading.Lock()
@@ -49,7 +49,7 @@ class FileLogger:
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         filename = f"{stamp}-{job_id[:8]}-{_safe_title(title)}.log"
         path = self.jobs_dir / filename
-        rel_path = path.relative_to(PROJECT_ROOT).as_posix()
+        rel_path = path.relative_to(DATA_ROOT).as_posix()
         logger = JobFileLogger(path=path, rel_path=rel_path, title=title, root_logger=self)
         logger.log(f"JOB START: {title}")
         self.info(f"Job created: {title} [{job_id}] -> {rel_path}")

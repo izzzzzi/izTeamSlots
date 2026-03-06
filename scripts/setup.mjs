@@ -11,6 +11,11 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
+if (process.env.IZTEAMSLOTS_SKIP_SETUP === "1") {
+  console.log("Skipping setup (IZTEAMSLOTS_SKIP_SETUP=1)");
+  process.exit(0);
+}
+
 const isWin = platform() === "win32";
 
 try {

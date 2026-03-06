@@ -79,10 +79,12 @@ popd
 echo   [v] UI deps installed
 
 :: ── .env ────────────────────────────────────────────────
-if not exist "%ROOT%\.env" (
+set "SETTINGS_DIR=%USERPROFILE%\.izteamslots"
+if not exist "%SETTINGS_DIR%\.env" (
+    if not exist "%SETTINGS_DIR%" mkdir "%SETTINGS_DIR%"
     if exist "%ROOT%\.env.example" (
-        copy "%ROOT%\.env.example" "%ROOT%\.env" >nul
-        echo   [!] .env created from .env.example — edit it with your API keys
+        copy "%ROOT%\.env.example" "%SETTINGS_DIR%\.env" >nul
+        echo   [!] .env created at %SETTINGS_DIR%\.env — edit it with your API keys
     )
 )
 

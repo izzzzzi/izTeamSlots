@@ -44,8 +44,19 @@ class JobManager:
     def __init__(self, emit: EmitFunc, file_logger: FileLogger | None = None) -> None:
         self._emit = emit
         self._file_logger = file_logger or FileLogger()
+        self._active_thread: threading.Thread | None = None
+        self._active_job_id: str | None = None
+        self._lock = threading.Lock()
+
+    @property
+    def busy(self) -> bool:
+        return self._active_thread is not None and self._active_thread.is_alive()
 
     def start(self, title: str, handler: Callable[[JobContext], Any]) -> str:
+        with self._lock:
+            if self.busy:
+                raise RuntimeError(f"Задача уже выполняется: {self._active_job_id}")
+
         job_id = uuid.uuid4().hex
         job_logger = self._file_logger.create_job_logger(job_id, title)
         self._emit("job.started", {"job_id": job_id, "title": title, "log_path": job_logger.rel_path})
@@ -73,4 +84,12 @@ class JobManager:
 
         thread = threading.Thread(target=runner, daemon=True)
         thread.start()
+        self._active_thread = thread
+        self._active_job_id = job_id
         return job_id
+
+    def wait_all(self, timeout: float = 30) -> None:
+        """Wait for the active job to finish."""
+        thread = self._active_thread
+        if thread and thread.is_alive():
+            thread.join(timeout=timeout)

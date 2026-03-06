@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable
 
-from . import PROJECT_ROOT
+from . import DATA_ROOT, PROJECT_ROOT
 from .account_store import AccountStore
 from .dto import AdminRow, AppStateDTO, WorkerRow
 from .mail import Mailbox, create_provider_for_mailbox
@@ -52,7 +52,7 @@ class UIFacade:
         self.sync_codex_files()
 
     def sync_codex_files(self) -> None:
-        codex_dir = PROJECT_ROOT / "codex"
+        codex_dir = DATA_ROOT / "codex"
         codex_dir.mkdir(parents=True, exist_ok=True)
         for src_dir in (self.store.admin_dir, self.store.worker_dir):
             if not src_dir.exists():
@@ -141,8 +141,18 @@ class UIFacade:
             if temp_root.exists():
                 shutil.rmtree(temp_root, ignore_errors=True)
 
+    def _cleanup_codex(self, email: str) -> None:
+        codex_dir = DATA_ROOT / "codex"
+        if not codex_dir.exists():
+            return
+        prefix = f"codex-{email}-"
+        for f in codex_dir.iterdir():
+            if f.name.startswith(prefix) and f.suffix == ".json":
+                f.unlink()
+
     def delete_admin(self, email: str) -> None:
         self.store.delete_admin(email)
+        self._cleanup_codex(email)
         for w in self.store.list_workers():
             if w.admin_email == email:
                 w.admin_email = None
@@ -151,6 +161,7 @@ class UIFacade:
             self.manager = None
 
     def delete_worker(self, email: str) -> None:
+        self._cleanup_codex(email)
         self.store.delete_worker(email)
 
     def open_admin_browser(self, email: str, log: LogFunc) -> None:
@@ -217,8 +228,11 @@ class UIFacade:
             if progress:
                 progress(slot_no, count, f"slot {slot_no}/{count}")
             try:
-                manager.create_invite_login_one()
-                ok += 1
+                worker = manager.create_invite_login_one()
+                if worker.access_token:
+                    ok += 1
+                else:
+                    log("Слот создан без OAuth-токена — нужен перелогин")
             except Exception as e:
                 log(f"Ошибка: {e}")
         manager._close_admin_page()

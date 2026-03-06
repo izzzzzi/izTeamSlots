@@ -9,9 +9,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from . import PROJECT_ROOT
+from . import DATA_ROOT, PROJECT_ROOT
 
-ACCOUNTS_DIR = PROJECT_ROOT / "accounts"
+ACCOUNTS_DIR = DATA_ROOT / "accounts"
 
 
 @dataclass
@@ -60,8 +60,7 @@ class AccountStore:
         return {}
 
     def _write_index(self, path: Path, data: dict) -> None:
-        index_path = path / "index.json"
-        index_path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+        self._atomic_write_json(path / "index.json", data)
 
     def _read_meta(self, folder: Path) -> dict:
         meta_path = folder / "meta.json"
@@ -71,8 +70,13 @@ class AccountStore:
 
     def _write_meta(self, folder: Path, data: dict) -> None:
         folder.mkdir(parents=True, exist_ok=True)
-        meta_path = folder / "meta.json"
-        meta_path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+        self._atomic_write_json(folder / "meta.json", data)
+
+    def _atomic_write_json(self, path: Path, data: dict) -> None:
+        """Write JSON atomically: temp file + rename to prevent corruption on crash."""
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(path)
 
     # --- Admin CRUD ---
 
@@ -226,6 +230,7 @@ class AccountStore:
                 "email": email,
                 "password": password,
                 "status": "created",
+                "admin_email": admin_email,
             })
             return WorkerAccount(
                 id=worker_id, email=email, password=password,
@@ -256,6 +261,8 @@ class AccountStore:
                 meta["access_token"] = account.access_token
             if account.workspace_id is not None:
                 meta["workspace_id"] = account.workspace_id
+            if account.admin_email is not None:
+                meta["admin_email"] = account.admin_email
             self._write_meta(account_dir, meta)
 
     def delete_worker(self, email: str) -> None:
@@ -327,17 +334,24 @@ class AccountStore:
                     meta = {"email": email, "password": ""}
                     if role == "worker":
                         meta["status"] = info.get("status", "created")
+                        meta["admin_email"] = info.get("admin_email", "")
                     self._write_meta(account_dir, meta)
                     fixes.append(f"{role}: {email} — meta.json отсутствовал, создан заново")
                 else:
                     try:
                         json.loads(meta_path.read_text())
                     except (json.JSONDecodeError, OSError):
+                        backup = meta_path.with_suffix(".json.bak")
+                        try:
+                            meta_path.replace(backup)
+                        except OSError:
+                            pass
                         meta = {"email": email, "password": ""}
                         if role == "worker":
                             meta["status"] = info.get("status", "created")
+                            meta["admin_email"] = info.get("admin_email", "")
                         self._write_meta(account_dir, meta)
-                        fixes.append(f"{role}: {email} — meta.json был повреждён, пересоздан")
+                        fixes.append(f"{role}: {email} — meta.json повреждён, .bak сохранён")
 
             # 4. browser_profile отсутствует (данные есть, но куки нет)
             for email, info in index.items():
@@ -374,9 +388,21 @@ class AccountStore:
                             changed = True
                             fixes.append(f"{role}: папка {child.name} ({email}) — добавлена в index")
                         elif not email:
-                            # Нет meta или нет email — удаляем сироту
-                            shutil.rmtree(child)
-                            fixes.append(f"{role}: папка-сирота {child.name} без meta — удалена")
+                            fixes.append(f"{role}: папка-сирота {child.name} без meta — требует ручной проверки")
+
+            # Миграция: admin_email из index в meta.json для воркеров
+            if role == "worker":
+                for w_email, w_info in index.items():
+                    w_admin = w_info.get("admin_email", "")
+                    w_id = w_info.get("id")
+                    if not w_admin or not w_id:
+                        continue
+                    w_dir = role_dir / w_id
+                    w_meta = self._read_meta(w_dir)
+                    if w_meta and not w_meta.get("admin_email"):
+                        w_meta["admin_email"] = w_admin
+                        self._write_meta(w_dir, w_meta)
+                        fixes.append(f"worker: {w_email} — admin_email мигрирован в meta.json")
 
             if changed or to_remove:
                 self._write_index(role_dir, index)

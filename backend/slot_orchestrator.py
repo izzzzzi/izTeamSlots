@@ -286,8 +286,8 @@ class SlotManager:
         return worker
 
     def _cleanup_failed_worker(self, worker: WorkerAccount, api: ChatGPTWorkspaceAPI) -> None:
-        """Удалить worker из workspace если регистрация не удалась."""
-        self._log(f"Очистка: удаляю {worker.email} из workspace...")
+        """Удалить worker из workspace и локальных данных если регистрация не удалась."""
+        self._log(f"Очистка: удаляю {worker.email}...")
         try:
             members = api.get_members()
             for m in members:
@@ -296,14 +296,18 @@ class SlotManager:
                     self._log(f"Удалён из workspace: {worker.email}")
                     break
             else:
-                # Попробуем удалить инвайт если ещё не зарегистрирован
                 try:
                     api.delete_invite(worker.email)
                     self._log(f"Инвайт удалён: {worker.email}")
                 except Exception:
                     pass
         except Exception as ex:
-            self._log(f"Не удалось очистить: {ex}")
+            self._log(f"Не удалось очистить workspace: {ex}")
+        try:
+            self.store.delete_worker(worker.email)
+            self._log(f"Локальная запись удалена: {worker.email}")
+        except Exception as ex:
+            self._log(f"Не удалось удалить локально: {ex}")
 
     def get_pending_invites(self) -> list[dict]:
         page = self._ensure_admin_page()
@@ -351,6 +355,7 @@ class SlotManager:
         # Полный OAuth логин (как при перелогине) — получаем все токены
         self._log(f"OAuth логин {worker.email}...")
         page2: Page | None = None
+        oauth_ok = False
         try:
             page2, session = oauth_login(
                 email=worker.email,
@@ -370,13 +375,19 @@ class SlotManager:
                 worker_dir = self.store.worker_dir / worker.id
                 codex_path = save_codex_file(worker_dir, session, worker.email)
                 self._log(f"Codex-файл: {codex_path.name}")
+                oauth_ok = True
+            else:
+                self._log(f"OAuth: нет access_token для {worker.email}")
         except Exception as e:
             self._log(f"OAuth логин не удался: {e}")
         finally:
             if page2:
                 close_browser(page2, log=self._log)
 
-        self._log(f"Слот {worker.email} зарегистрирован!")
+        if oauth_ok:
+            self._log(f"Слот {worker.email} готов")
+        else:
+            self._log(f"Слот {worker.email} зарегистрирован, но OAuth не завершён — нужен перелогин")
 
     def get_status(self) -> dict:
         workers = self._get_workers()

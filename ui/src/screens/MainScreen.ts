@@ -171,6 +171,7 @@ export class MainScreen {
   private busyTitle = ""
 
   private logs: string[] = []
+  private _lastCtrlC = 0
 
   private prompt: PromptState = {
     active: false,
@@ -245,6 +246,11 @@ export class MainScreen {
 
     this.renderer.keyInput.on("paste", (event: any) => {
       this.onPaste(event)
+    })
+
+    this.rpc.onErrorOutput((line) => {
+      this.pushLog(`[backend] ${line}`)
+      this.render()
     })
 
     this.rpc.start()
@@ -490,9 +496,10 @@ export class MainScreen {
     }
 
     setRenderableText(this.detailText, this.buildDetailPanel())
+    const menuMaxVisible = Math.max(4, (this.menuBox.height ?? 8) - 2)
     setRenderableText(
       this.menuText,
-      formatMenu(visibleMenuOptions, visibleMenuIndex, Math.max(48, (process.stdout.columns || 120) - 6)),
+      formatMenu(visibleMenuOptions, visibleMenuIndex, Math.max(48, (process.stdout.columns || 120) - 6), menuMaxVisible),
     )
     this.setStatus()
     this.renderer.requestRender()
@@ -1142,11 +1149,27 @@ export class MainScreen {
       return
     }
     if ((key.ctrl || key.meta) && key.name === "c") {
+      if (this.busy) {
+        const now = Date.now()
+        if (now - this._lastCtrlC < 1500) {
+          this.pushLog("Аварийный выход...")
+          this.renderer.destroy()
+          process.exit(1)
+        }
+        this._lastCtrlC = now
+        this.pushLog("Нажмите Ctrl+C ещё раз для аварийного выхода")
+        this.render()
+        return
+      }
       this.copySelectedLogToClipboard()
       return
     }
 
-    if (this.busy && key.name !== "q") {
+    if (this.busy) {
+      if (key.name === "q") {
+        this.pushLog("Дождитесь завершения задачи перед выходом (Ctrl+C×2 — аварийный выход)")
+        this.render()
+      }
       return
     }
 

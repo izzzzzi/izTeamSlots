@@ -66,17 +66,30 @@ export function formatTable(
   return joinStyledLines(lines)
 }
 
-export function formatMenu(options: MenuOption[], selected: number, maxWidth = 80): StyledText {
+export function formatMenu(options: MenuOption[], selected: number, maxWidth = 80, maxVisible = 0): StyledText {
   if (options.length === 0) {
     return t`${fg("#94a3b8")("(пусто)")}`
   }
 
-  const lines: StyledText[] = []
   const longestLabel = options.reduce((max, option) => Math.max(max, option.label.length), 0)
   const labelWidth = Math.max(18, Math.min(longestLabel + 2, 28))
   const hintWidth = Math.max(20, maxWidth - labelWidth - 8)
 
-  for (let i = 0; i < options.length; i++) {
+  // Determine visible window
+  const limit = maxVisible > 0 ? maxVisible : options.length
+  let start = 0
+  if (options.length > limit) {
+    start = Math.max(0, Math.min(selected - Math.floor(limit / 2), options.length - limit))
+  }
+  const end = Math.min(start + limit, options.length)
+
+  const lines: StyledText[] = []
+
+  if (start > 0) {
+    lines.push(t`${fg("#64748b")(`  ▲ ещё ${start}`)}`)
+  }
+
+  for (let i = start; i < end; i++) {
     const opt = options[i]
     const num = i < 9 ? `${i + 1}.` : "• "
     const label = pad(opt.label, labelWidth)
@@ -92,6 +105,10 @@ export function formatMenu(options: MenuOption[], selected: number, maxWidth = 8
     } else {
       lines.push(t`${fg("#64748b")(` ${num}`)} ${fg("#cbd5e1")(label)}${fg("#64748b")(hint)}`)
     }
+  }
+
+  if (end < options.length) {
+    lines.push(t`${fg("#64748b")(`  ▼ ещё ${options.length - end}`)}`)
   }
 
   return joinStyledLines(lines)
