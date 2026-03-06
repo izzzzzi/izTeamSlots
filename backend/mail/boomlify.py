@@ -111,8 +111,8 @@ class BoomlifyProvider(MailProvider):
 
     def _extract_mailbox_id(self, mailbox: Mailbox) -> str:
         password = mailbox.password.strip()
-        if password.startswith("boomlify:"):
-            return password.split(":", 1)[1].strip()
+        if password.startswith(self.password_prefix):
+            return password[len(self.password_prefix) :].strip()
         if password:
             return password
         raise MailError(

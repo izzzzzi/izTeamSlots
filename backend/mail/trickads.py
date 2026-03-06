@@ -60,11 +60,18 @@ class TrickAdsProvider(MailProvider):
     """Temporary email via trickadsagencyltd.com/tepmail."""
 
     name = "trickads"
+    password_prefix = "trickads:"
 
-    def __init__(self, session: requests.Session | None = None) -> None:
+    def __init__(self, session: requests.Session | None = None, **_kwargs: Any) -> None:
         self._external = session is not None
         self._session = session or requests.Session()
         self._session.headers.update(HEADERS)
+
+    def _extract_password(self, mailbox: Mailbox) -> str:
+        password = mailbox.password.strip()
+        if password.startswith(self.password_prefix):
+            return password[len(self.password_prefix) :]
+        return password
 
     def _request(
         self,
@@ -95,12 +102,12 @@ class TrickAdsProvider(MailProvider):
 
     def generate(self) -> Mailbox:
         data = self._request("/tepmail/generate")
-        return Mailbox(email=data["email"], password=data["password"])
+        return Mailbox(email=data["email"], password=f"{self.password_prefix}{data['password']}")
 
     def inbox(self, mailbox: Mailbox) -> Inbox:
         data = self._request(
             "/tepmail/inbox",
-            json_body={"email": mailbox.email, "password": mailbox.password},
+            json_body={"email": mailbox.email, "password": self._extract_password(mailbox)},
         )
         return Inbox(
             email=data["email"],
