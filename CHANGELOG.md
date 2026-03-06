@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.2.0...v1.3.0) (2026-03-06)
+
+
+### Features
+
+* add Settings menu for API keys and mail providers ([e026db7](https://github.com/izzzzzi/izTeamSlots/commit/e026db7dd01db0544ad7993dfb6ab020490f2ae8))
+
 # [1.2.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.6...v1.2.0) (2026-03-06)
 
 
