@@ -59,6 +59,7 @@ izTeamSlots/
 │   ├── chatgpt_workspace_api.py    # ChatGPT Workspace API через браузер
 │   ├── slot_orchestrator.py        # Оркестратор пайплайна слотов
 │   ├── dto.py                      # DTO для UI
+│   ├── file_logger.py              # Логирование в файл
 │   ├── jobs.py                     # Задачи в потоках
 │   ├── rpc_protocol.py             # JSON-RPC протокол
 │   ├── rpc_server.py               # RPC-сервер (stdio)
