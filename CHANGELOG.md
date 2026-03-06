@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.0...v1.5.1) (2026-03-06)
+
+
+### Bug Fixes
+
+* use self.password_prefix in boomlify generate() instead of hardcoded string ([de0098a](https://github.com/izzzzzi/izTeamSlots/commit/de0098ad620ee3010c359155b726f097b15fb13f))
+
 # [1.5.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.4.0...v1.5.0) (2026-03-06)
 
 
