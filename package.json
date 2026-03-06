@@ -2,6 +2,9 @@
   "name": "izteamslots",
   "version": "1.0.0",
   "description": "ChatGPT Team slot management — automated invite, register, OAuth login & codex token pipeline",
+  "bin": {
+    "izteamslots": "bin/izteamslots.sh"
+  },
   "scripts": {
     "start": "bun run --cwd ui src/main.ts",
     "setup": "bash scripts/setup.sh",
@@ -10,5 +13,18 @@
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/izzzzzi/izTeamSlots.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "chatgpt",
+    "team",
+    "slots",
+    "openai",
+    "codex",
+    "automation"
+  ]
 }
