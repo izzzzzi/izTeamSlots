@@ -36,15 +36,12 @@
 - Перелогин слотов: одного выбранного или всех по очереди.
 - Codex-файлы: авто-сохранение `codex-<email>-Team.json` в аккаунт и в `./codex/`.
 - Doctor-проверка: валидация/восстановление файловой структуры аккаунтов при старте.
-- Просмотр почты: входящие письма для админов и слотов.
-
 ---
 
 ## Структура проекта
 
 ```text
 izTeamSlots/
-├── app.py                          # Entrypoint: запускает UI
 ├── bin/                            # CLI-бинарники
 │   └── izteamslots.mjs             # Кроссплатформенный entrypoint (Node.js)
 ├── scripts/                        # Установочные скрипты
@@ -147,17 +144,17 @@ izteamslots
 
 ```mermaid
 flowchart TD
-    A[app.py] -->|spawns| B[bun ui/src/main.ts]
+    A[izteamslots CLI] -->|bun| B[ui/src/main.ts]
     B --> C[MainScreen.ts]
-    C -->|stdio JSON-RPC| D[StdioRpcClient]
-    D -->|spawns| E[python -m backend]
+    C --> D[StdioRpcClient]
+    D -->|spawns + stdio JSON-RPC| E[python -m backend]
     E --> F[RPCServer]
     F --> G[UIFacade]
     G --> H[AccountStore]
     G --> I[SlotManager]
     I --> J[openai_web_auth]
     I --> K[chatgpt_workspace_api]
-    I --> L[Boomlify Mail API]
+    I --> L[Mail Providers]
 ```
 
 ## Почтовые провайдеры (плагины)

@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from . import PROJECT_ROOT
 from .account_store import AccountStore
-from .dto import AdminRow, AppStateDTO, MailAccountRow, WorkerRow
+from .dto import AdminRow, AppStateDTO, WorkerRow
 from .mail import Mailbox, create_provider_for_mailbox
 from .openai_web_auth import (
     close_browser as close_br,
@@ -82,47 +82,7 @@ class UIFacade:
             )
             for w in raw_workers
         ]
-        accounts: list[MailAccountRow] = [
-            *(MailAccountRow(kind="admin", email=a.email) for a in raw_admins),
-            *(MailAccountRow(kind="worker", email=w.email) for w in raw_workers),
-        ]
-        return AppStateDTO(admins=admins, workers=workers, accounts=accounts).to_dict()
-
-    def list_admins(self) -> list[dict[str, Any]]:
-        return [
-            AdminRow.from_account(
-                a,
-                has_browser_profile=_has_profile_files(self.store.get_admin_profile_dir(a)),
-            ).__dict__
-            for a in self.store.list_admins()
-        ]
-
-    def list_workers(self) -> list[dict[str, Any]]:
-        return [
-            WorkerRow.from_account(
-                w,
-                has_browser_profile=_has_profile_files(self.store.get_worker_profile_dir(w)),
-            ).__dict__
-            for w in self.store.list_workers()
-        ]
-
-    def list_workers_by_admin(self, admin_email: str) -> list[dict[str, Any]]:
-        workers = [w for w in self.store.list_workers() if w.admin_email == admin_email]
-        return [
-            WorkerRow.from_account(
-                w,
-                has_browser_profile=_has_profile_files(self.store.get_worker_profile_dir(w)),
-            ).__dict__
-            for w in workers
-        ]
-
-    def list_mail_accounts(self) -> list[dict[str, str]]:
-        out: list[dict[str, str]] = []
-        for a in self.store.list_admins():
-            out.append({"kind": "admin", "email": a.email})
-        for w in self.store.list_workers():
-            out.append({"kind": "worker", "email": w.email})
-        return out
+        return AppStateDTO(admins=admins, workers=workers).to_dict()
 
     def add_admin(self, email: str, password: str) -> dict[str, Any]:
         admin = self.store.add_admin(email, password)
@@ -334,46 +294,3 @@ class UIFacade:
         self.sync_codex_files()
         return {"ok": ok, "total": total}
 
-    def fetch_mail(self, email: str, log: LogFunc) -> dict[str, Any]:
-        password = self._resolve_password(email)
-        if password is None:
-            raise RuntimeError("Аккаунт не найден")
-
-        mailbox = Mailbox(email=email, password=password)
-        mail = create_provider_for_mailbox(mailbox)
-        try:
-            inbox = mail.inbox(mailbox)
-        finally:
-            mail.close()
-
-        messages = inbox.messages
-        if not messages:
-            log(f"{email}: нет писем")
-        else:
-            log(f"{email}: писем {len(messages)}")
-            for m in messages[:50]:
-                log(f"{m.date} | {m.sender} | {m.subject}")
-
-        return {
-            "email": email,
-            "count": len(messages),
-            "messages": [
-                {
-                    "id": m.id,
-                    "date": m.date,
-                    "sender": m.sender,
-                    "subject": m.subject,
-                    "body": m.body,
-                }
-                for m in messages[:50]
-            ],
-        }
-
-    def _resolve_password(self, email: str) -> str | None:
-        admin = self.store.get_admin(email)
-        if admin:
-            return admin.password
-        worker = self.store.get_worker(email)
-        if worker:
-            return worker.password
-        return None

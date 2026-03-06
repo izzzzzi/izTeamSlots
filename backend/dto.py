@@ -91,16 +91,9 @@ class WorkerRow:
 
 
 @dataclass
-class MailAccountRow:
-    kind: str
-    email: str
-
-
-@dataclass
 class AppStateDTO:
     admins: list[AdminRow]
     workers: list[WorkerRow]
-    accounts: list[MailAccountRow]
 
     def to_dict(self) -> dict:
         return asdict(self)

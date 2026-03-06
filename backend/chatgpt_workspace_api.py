@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 from .openai_web_auth import Page
@@ -31,34 +32,51 @@ class ChatGPTWorkspaceAPI:
         url = f"https://chatgpt.com{path}"
         js_body = json.dumps(body) if body else "null"
 
-        result = self.page.evaluate(
-            """async ([url, method, body, token, accountId]) => {
-                const opts = {
-                    method: method,
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": "Bearer " + token,
-                        "chatgpt-account-id": accountId,
-                    },
-                };
-                if (body && method !== 'GET' && method !== 'HEAD') opts.body = body;
-                const resp = await fetch(url, opts);
-                const text = await resp.text();
-                return {status: resp.status, body: text};
-            }""",
-            [url, method, js_body, self.access_token, self.account_id],
-        )
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                result = self.page.evaluate(
+                    """async ([url, method, body, token, accountId]) => {
+                        const opts = {
+                            method: method,
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": "Bearer " + token,
+                                "chatgpt-account-id": accountId,
+                            },
+                        };
+                        if (body && method !== 'GET' && method !== 'HEAD') opts.body = body;
+                        const resp = await fetch(url, opts);
+                        const text = await resp.text();
+                        return {status: resp.status, body: text};
+                    }""",
+                    [url, method, js_body, self.access_token, self.account_id],
+                )
+            except Exception as e:
+                if attempt < max_attempts:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise ChatGPTAPIError(0, f"Browser error: {e}") from e
 
-        status = result["status"]
-        raw_body = result["body"]
+            status = result["status"]
+            raw_body = result["body"]
 
-        if status >= 400:
-            short = raw_body[:200] if len(raw_body) > 200 else raw_body
-            if status == 403:
-                short = "Cloudflare/доступ запрещён — токен протух, перелогинитесь"
-            raise ChatGPTAPIError(status, short)
+            if status in (429, 500, 502, 503, 504):
+                if attempt < max_attempts:
+                    time.sleep(2 ** attempt)
+                    continue
+                short = raw_body[:200] if len(raw_body) > 200 else raw_body
+                raise ChatGPTAPIError(status, short)
 
-        return json.loads(raw_body) if raw_body else {}
+            if status >= 400:
+                short = raw_body[:200] if len(raw_body) > 200 else raw_body
+                if status == 403:
+                    short = "Cloudflare/доступ запрещён — токен протух, перелогинитесь"
+                raise ChatGPTAPIError(status, short)
+
+            return json.loads(raw_body) if raw_body else {}
+
+        raise ChatGPTAPIError(0, "Max retries exceeded")
 
     def send_invites(self, emails: list[str]) -> dict:
         """Отправить инвайты в workspace."""

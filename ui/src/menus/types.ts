@@ -2,11 +2,9 @@ export type MenuName =
   | "main"
   | "admins"
   | "slots"
-  | "mail"
   | "settings"
   | "pick_admin"
   | "pick_worker"
-  | "pick_account"
   | "confirm"
 
 export interface MenuOption {
@@ -42,11 +40,6 @@ export interface WorkerRow {
   status_label: string
 }
 
-export interface MailAccountRow {
-  kind: string
-  email: string
-}
-
 export interface SettingItem {
   key: string
   label: string
@@ -56,7 +49,6 @@ export interface SettingItem {
 export interface AppState {
   admins: AdminRow[]
   workers: WorkerRow[]
-  accounts: MailAccountRow[]
   settings?: SettingItem[]
 }
 

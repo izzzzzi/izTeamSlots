@@ -139,20 +139,6 @@ export function formatDashboard(data: DashboardData, maxWidth = 72): StyledText 
   return joinStyledLines(lines)
 }
 
-export function formatLogs(logs: string[], max = 200, maxWidth = 120): StyledText {
-  const tail = logs.slice(Math.max(0, logs.length - max))
-  if (tail.length === 0) return t`${fg("#64748b")("Ожидание событий...")}`
-
-  const lines: StyledText[] = tail.map((line, i) => {
-    const value = truncate(line, Math.max(24, maxWidth))
-    if (line.includes("Ошибка:")) return t`${fg("#fca5a5")(value)}`
-    if (line.includes("▶") || line.includes("Готово")) return t`${fg("#93c5fd")(bold(value))}`
-    return i % 2 === 0 ? t`${fg("#cbd5e1")(value)}` : t`${fg("#94a3b8")(value)}`
-  })
-
-  return joinStyledLines(lines)
-}
-
 export function joinStyledLines(lines: StyledText[]): StyledText {
   const chunks: StyledText["chunks"] = []
   for (let i = 0; i < lines.length; i++) {

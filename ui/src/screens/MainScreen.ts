@@ -1,8 +1,8 @@
-import { StyledText, bg, bold, createCliRenderer, fg, stringToStyledText, t } from "@opentui/core"
+import { StyledText, bg, bold, createCliRenderer, fg, t } from "@opentui/core"
 import * as OpenTUI from "@opentui/core"
 import { execFileSync } from "node:child_process"
 
-import { formatDashboard, formatMenu, formatTable } from "../menus/format"
+import { formatDashboard, formatMenu, formatTable, joinStyledLines } from "../menus/format"
 import { getDashboard, getHint, getMenuOptions, getTable, parentMenu } from "../menus/mainMenus"
 import type { AppState, MenuContext, MenuName, MenuOption } from "../menus/types"
 import { StdioRpcClient } from "../transport/stdioClient"
@@ -10,7 +10,6 @@ import { StdioRpcClient } from "../transport/stdioClient"
 const EMPTY_STATE: AppState = {
   admins: [],
   workers: [],
-  accounts: [],
 }
 
 const HERO_LOGO = [
@@ -49,17 +48,6 @@ type ScrollableTextRenderable = AnyRenderable & {
 
 function setRenderableText(node: AnyRenderable, value: unknown) {
   node.content = value
-}
-
-function joinStyledLines(lines: StyledText[]): StyledText {
-  const chunks: StyledText["chunks"] = []
-  for (let i = 0; i < lines.length; i++) {
-    chunks.push(...lines[i].chunks)
-    if (i < lines.length - 1) {
-      chunks.push(...stringToStyledText("\n").chunks)
-    }
-  }
-  return new StyledText(chunks)
 }
 
 function copyToSystemClipboard(text: string): boolean {
@@ -124,26 +112,49 @@ function getMenuOptionDescription(option: MenuOption | undefined): string {
   if (extra?.description) return extra.description
   const optionId = option?.id ?? ""
 
-  if (optionId === "menu_admins") return "Добавление, логин и обслуживание администраторов."
-  if (optionId === "menu_slots") return "Создание слотов, перелогин и работа с профилями."
-  if (optionId === "menu_mail") return "Проверка входящих писем админов и слотов."
-  if (optionId === "menu_settings") return "API-ключи и настройки провайдеров почты."
-  if (optionId === "menu_exit") return "Аккуратно завершить интерфейс."
-  if (optionId === "adm_add") return "Создать нового админа: в авто-режиме ввод в TUI, в ручном режиме вход сразу в браузере."
-  if (optionId === "adm_relogin") return "Выбрать админа и режим перелогина: автоматический или ручной."
-  if (optionId === "adm_open") return "Открыть локальный профиль браузера администратора."
-  if (optionId === "adm_delete") return "Удалить админа и отвязать связанные слоты."
-  if (optionId === "slots_create") return "Запустить полный пайплайн создания новых слотов."
-  if (optionId === "slots_relogin") return "Выбрать режим перелогина: один конкретный слот или все доступные сразу."
-  if (optionId === "slots_open") return "Открыть профиль браузера выбранного слота."
-  if (optionId === "slots_delete") return "Удалить слот и его локальные файлы."
-  if (optionId.startsWith("mail_pick:")) return "Открыть входящие письма этого аккаунта."
-  if (optionId.startsWith("pick_admin:")) return "Выбрать админа для следующего действия."
-  if (optionId.startsWith("pick_worker:")) return "Выбрать слот для следующего действия."
-  if (optionId === "confirm_yes") return "Подтвердить действие без возможности быстрого отката."
-  if (optionId === "confirm_no") return "Вернуться без изменений."
+  // Главное меню
+  if (optionId === "menu_admins")
+    return "Управление администраторами: добавление, логин (авто/ручной), открытие браузерного профиля и удаление. Админ — основа для создания слотов."
+  if (optionId === "menu_slots")
+    return "Создание новых слотов через пайплайн, перелогин одного или всех сразу, открытие браузера для проверки и удаление."
+  if (optionId === "menu_settings")
+    return "API-ключи Boomlify, домен временной почты и провайдеры. Без настроек автоматические операции не работают."
+  if (optionId === "menu_exit")
+    return "Корректно завершить работу: сохранить состояние и закрыть интерфейс."
 
-  return "Действие доступно через Enter."
+  // Админы
+  if (optionId === "adm_add")
+    return "Добавить нового админа. Авто-режим: email и пароль вводятся здесь, логин идёт автоматически. Ручной режим: сразу откроется браузер, вход и подтверждение вы делаете сами."
+  if (optionId === "adm_relogin")
+    return "Обновить токен и профиль браузера. Выберите админа, затем режим: авто (по email/паролю) или ручной (через браузер). Нужно, если токен истёк."
+  if (optionId === "adm_open")
+    return "Открыть сохранённый браузерный профиль админа для ручной проверки. Требуется существующий профиль — сначала выполните логин."
+  if (optionId === "adm_delete")
+    return "Полностью удалить админа: профиль, токены и локальные файлы. Привязанные слоты будут отвязаны, но не удалены."
+
+  // Слоты
+  if (optionId === "slots_create")
+    return "Запустить полный пайплайн: создание почты, инвайт в workspace, регистрация и сохранение codex-файлов. Нужен админ с активным токеном."
+  if (optionId === "slots_relogin")
+    return "Обновить токены слотов. «Один слот» — выберете конкретный. «Все слоты» — массовый перелогин для всех с сохранённым OpenAI-паролем."
+  if (optionId === "slots_open")
+    return "Открыть браузерный профиль конкретного слота для ручной проверки. Профиль должен существовать — запустите перелогин, если его нет."
+  if (optionId === "slots_delete")
+    return "Удалить слот и все связанные локальные данные: профиль браузера, codex-файл, записи в хранилище."
+
+  // Пикеры и подтверждение
+  if (optionId.startsWith("pick_admin:"))
+    return "Выберите админа для выполнения действия. Подробности о выбранном — в блоке контекста справа."
+  if (optionId.startsWith("pick_worker:"))
+    return "Выберите слот для выполнения действия. Статус и привязка к админу показаны в контексте."
+  if (optionId.startsWith("setting:"))
+    return "Нажмите Enter, чтобы изменить значение. Текущее значение замаскировано для безопасности."
+  if (optionId === "confirm_yes")
+    return "Подтвердить удаление. Действие необратимо — данные будут удалены без возможности отката."
+  if (optionId === "confirm_no")
+    return "Отменить и вернуться назад. Никакие данные не будут изменены."
+
+  return "Нажмите Enter для выполнения."
 }
 
 export class MainScreen {
@@ -501,10 +512,8 @@ export class MainScreen {
   private getScreenTitle(): string {
     if (this.menuName === "admins") return "Админы"
     if (this.menuName === "slots") return "Слоты"
-    if (this.menuName === "mail") return "Почта"
     if (this.menuName === "pick_admin") return "Выбор админа"
     if (this.menuName === "pick_worker") return "Выбор слота"
-    if (this.menuName === "pick_account") return "Выбор аккаунта"
     if (this.menuName === "confirm") return "Подтверждение"
     return "Обзор"
   }
@@ -581,7 +590,7 @@ export class MainScreen {
         "Откройте «Настройки» и укажите API-ключ временной почты.",
         "Добавьте первого админа через раздел «Админы».",
         "После добавления выполните логин, чтобы сохранить токен и профиль браузера.",
-        "Затем создайте слоты и проверьте входящие письма.",
+        "Затем создайте слоты через раздел «Слоты».",
       ]
     }
 
@@ -598,7 +607,7 @@ export class MainScreen {
       return [
         "Откройте раздел «Слоты».",
         "Запустите создание слотов под нужным админом.",
-        "После завершения проверьте почту и недавние события.",
+        "После завершения проверьте состояние слотов в таблице.",
       ]
     }
 
@@ -607,13 +616,13 @@ export class MainScreen {
       return [
         "Часть слотов ещё не готова к перелогину.",
         "Проверьте, что для нужных слотов сохранён OpenAI-пароль.",
-        "Используйте раздел «Почта», чтобы контролировать инвайты и письма.",
+        "Используйте перелогин, чтобы восстановить доступ к проблемным слотам.",
       ]
     }
 
     return [
       "Система выглядит рабочей.",
-      "Для обслуживания слотов используйте разделы «Слоты» и «Почта».",
+      "Для обслуживания используйте перелогин и проверку через браузер.",
       "Последние события и ошибки всегда видны в нижней панели.",
     ]
   }
@@ -673,8 +682,6 @@ export class MainScreen {
       lines.push(t`${fg("#cbd5e1")("Сначала добавьте первого админа, затем выполните логин.")}`)
     } else if (this.menuName === "slots") {
       lines.push(t`${fg("#cbd5e1")("Слоты появятся после запуска пайплайна от выбранного админа.")}`)
-    } else if (this.menuName === "mail") {
-      lines.push(t`${fg("#cbd5e1")("Почтовые аккаунты появятся после добавления админа или создания слотов.")}`)
     } else if (this.menuName === "pick_admin" || this.menuName === "pick_worker") {
       lines.push(t`${fg("#cbd5e1")("Нет доступных элементов для выбора. Вернитесь назад и подготовьте данные.")}`)
     } else {
@@ -699,22 +706,6 @@ export class MainScreen {
         `Всего слотов: ${this.state.workers.length}. С OpenAI-паролем: ${withPassword}.`,
         "Массовый перелогин работает только для слотов с сохранённым паролем.",
       ]
-    }
-
-    if (this.menuName === "mail") {
-      const notes = [
-        `Доступно почтовых аккаунтов: ${this.state.accounts.length}.`,
-        "Выберите аккаунт, чтобы подтянуть последние письма в лог.",
-      ]
-      const selectedId = this.menuOptions[this.selectedIndex]?.id ?? ""
-      if (selectedId.startsWith("mail_pick:")) {
-        const index = Number(selectedId.split(":", 2)[1])
-        const account = this.state.accounts[index]
-        if (account) {
-          notes.push(`Текущий выбор: ${account.email} (${account.kind}).`)
-        }
-      }
-      return notes
     }
 
     if (this.menuName === "pick_admin") {
@@ -845,7 +836,6 @@ export class MainScreen {
     if (this.menuName === "main") {
       if (optionId === "menu_admins") this.menuName = "admins"
       else if (optionId === "menu_slots") this.menuName = "slots"
-      else if (optionId === "menu_mail") this.menuName = "mail"
       else if (optionId === "menu_settings") {
         this.menuName = "settings"
         this.menuCtx = {}
@@ -935,16 +925,6 @@ export class MainScreen {
       }
       await this.loadSettings()
       this.render()
-      return
-    }
-
-    if (this.menuName === "mail" && optionId.startsWith("mail_pick:")) {
-      const index = Number(optionId.split(":", 2)[1])
-      if (!Number.isInteger(index) || index < 0 || index >= this.state.accounts.length) return
-      const email = this.state.accounts[index].email
-      this.menuName = "mail"
-      this.menuCtx = {}
-      await this.startJob("job.fetch_mail", { email })
       return
     }
 

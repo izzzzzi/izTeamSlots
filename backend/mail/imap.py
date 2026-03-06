@@ -21,6 +21,7 @@ import email as email_lib
 import imaplib
 import os
 import re
+import time
 from email.header import decode_header as _decode_header
 from typing import Any
 
@@ -128,22 +129,29 @@ class IMAPProvider(MailProvider):
 
     def _connect(self, mailbox: Mailbox) -> imaplib.IMAP4_SSL | imaplib.IMAP4:
         """Open an IMAP connection and authenticate."""
-        try:
-            if self.use_ssl:
-                conn = imaplib.IMAP4_SSL(self.host, self.port, timeout=self.timeout)
-            else:
-                conn = imaplib.IMAP4(self.host, self.port, timeout=self.timeout)
-        except (OSError, imaplib.IMAP4.error) as e:
-            raise MailServiceUnavailable(f"Cannot connect to {self.host}:{self.port}: {e}") from e
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                if self.use_ssl:
+                    conn = imaplib.IMAP4_SSL(self.host, self.port, timeout=self.timeout)
+                else:
+                    conn = imaplib.IMAP4(self.host, self.port, timeout=self.timeout)
+            except (OSError, imaplib.IMAP4.error) as e:
+                if attempt < max_attempts:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise MailServiceUnavailable(f"Cannot connect to {self.host}:{self.port}: {e}") from e
 
-        try:
-            conn.login(mailbox.email, mailbox.password)
-        except imaplib.IMAP4.error as e:
-            err_msg = str(e)
-            conn.logout()
-            raise MailAuthError(f"IMAP login failed for {mailbox.email}: {err_msg}") from e
+            try:
+                conn.login(mailbox.email, mailbox.password)
+            except imaplib.IMAP4.error as e:
+                err_msg = str(e)
+                conn.logout()
+                raise MailAuthError(f"IMAP login failed for {mailbox.email}: {err_msg}") from e
 
-        return conn
+            return conn
+
+        raise MailServiceUnavailable(f"Cannot connect to {self.host}:{self.port}")
 
     def generate(self) -> Mailbox:
         """IMAP cannot create mailboxes automatically.

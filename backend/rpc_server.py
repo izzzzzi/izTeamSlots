@@ -116,19 +116,6 @@ class RPCServer:
         if m == "state.get":
             return make_success_response(req.request_id, self.facade.get_state())
 
-        if m == "admins.list":
-            return make_success_response(req.request_id, {"items": self.facade.list_admins()})
-
-        if m == "workers.list":
-            return make_success_response(req.request_id, {"items": self.facade.list_workers()})
-
-        if m == "workers.by_admin":
-            email = self._as_str_param(p, "admin_email")
-            return make_success_response(req.request_id, {"items": self.facade.list_workers_by_admin(email)})
-
-        if m == "accounts.mail.list":
-            return make_success_response(req.request_id, {"items": self.facade.list_mail_accounts()})
-
         if m == "admin.add":
             email = self._as_str_param(p, "email")
             password = self._as_str_param(p, "password")
@@ -212,14 +199,6 @@ class RPCServer:
             job_id = self._run_job(
                 f"Браузер слота: {email}",
                 lambda ctx: self.facade.open_worker_browser(email, ctx.log),
-            )
-            return make_success_response(req.request_id, {"job_id": job_id})
-
-        if m == "job.fetch_mail":
-            email = self._as_str_param(p, "email")
-            job_id = self._run_job(
-                f"Почта: {email}",
-                lambda ctx: self.facade.fetch_mail(email, ctx.log),
             )
             return make_success_response(req.request_id, {"job_id": job_id})
 

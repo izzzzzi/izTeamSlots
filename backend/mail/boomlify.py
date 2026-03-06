@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 from urllib.parse import urlencode
 
@@ -91,23 +92,33 @@ class BoomlifyProvider(MailProvider):
             if clean_query:
                 url = f"{url}?{urlencode(clean_query)}"
 
-        try:
-            resp = self._session.request(method, url, json=json_body, timeout=30)
-        except requests.RequestException as e:
-            raise MailServiceUnavailable(f"Connection error: {e}") from e
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                resp = self._session.request(method, url, json=json_body, timeout=30)
+            except requests.RequestException as e:
+                if attempt < max_attempts:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise MailServiceUnavailable(f"Connection error: {e}") from e
 
-        try:
-            data = resp.json()
-        except ValueError:
-            data = {"error": resp.text.strip()[:500]}
+            try:
+                data = resp.json()
+            except ValueError:
+                data = {"error": resp.text.strip()[:500]}
 
-        if resp.status_code in (401, 403):
-            raise MailAuthError(f"[{resp.status_code}] {data}")
-        if resp.status_code in (429, 500, 502, 503, 504):
-            raise MailServiceUnavailable(f"[{resp.status_code}] {data}")
-        if resp.status_code >= 400:
-            raise MailError(f"[{resp.status_code}] {data}")
-        return data
+            if resp.status_code in (401, 403):
+                raise MailAuthError(f"[{resp.status_code}] {data}")
+            if resp.status_code in (429, 500, 502, 503, 504):
+                if attempt < max_attempts:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise MailServiceUnavailable(f"[{resp.status_code}] {data}")
+            if resp.status_code >= 400:
+                raise MailError(f"[{resp.status_code}] {data}")
+            return data
+
+        raise MailServiceUnavailable("Max retries exceeded")
 
     def _extract_mailbox_id(self, mailbox: Mailbox) -> str:
         password = mailbox.password.strip()

@@ -5,7 +5,6 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
     return [
       { id: "menu_admins", label: "Админы", hint: "Доступы, токены, браузерные профили" },
       { id: "menu_slots", label: "Слоты", hint: "Создание, перелогин и обслуживание" },
-      { id: "menu_mail", label: "Почта", hint: "Ящики и входящие письма" },
       { id: "menu_settings", label: "Настройки", hint: "API-ключи и провайдеры почты" },
       { id: "menu_exit", label: "Выход", hint: "Закрыть приложение" },
     ]
@@ -29,16 +28,6 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
     ]
   }
 
-  if (menuName === "mail") {
-    return [
-      ...state.accounts.map((a, i) => ({
-        id: `mail_pick:${i}`,
-        label: `${a.email}`,
-        hint: a.kind === "admin" ? "Почта администратора" : "Почта слота",
-      })),
-    ]
-  }
-
   if (menuName === "pick_admin") {
     return state.admins.map((a) => ({
       id: `pick_admin:${a.email}`,
@@ -52,14 +41,6 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
       id: `pick_worker:${w.email}`,
       label: w.email,
       hint: `Статус: ${humanizeWorkerStatus(w.status)}`,
-    }))
-  }
-
-  if (menuName === "pick_account") {
-    return state.accounts.map((a, i) => ({
-      id: `pick_account:${i}`,
-      label: a.email,
-      hint: a.kind === "admin" ? "Админский ящик" : "Почта слота",
     }))
   }
 
@@ -116,52 +97,6 @@ function humanizeWorkerStatus(status: string): string {
   return status
 }
 
-export function getScreenTitle(menuName: MenuName, ctx: MenuContext): string {
-  if (menuName === "main") return "Обзор системы"
-  if (menuName === "admins") return "Администраторы"
-  if (menuName === "slots") return "Слоты"
-  if (menuName === "mail") return "Почтовые ящики"
-  if (menuName === "settings") return "Настройки"
-  if (menuName === "pick_admin") return ctx.title ?? "Выбор администратора"
-  if (menuName === "pick_worker") return ctx.title ?? "Выбор слота"
-  if (menuName === "pick_account") return ctx.title ?? "Выбор аккаунта"
-  if (menuName === "confirm") return ctx.title ?? "Подтверждение"
-  return "izTeamSlots"
-}
-
-export function getScreenDescription(menuName: MenuName, state: AppState, ctx: MenuContext): string {
-  if (menuName === "main") {
-    return "Операционный центр для админов, слотов и временной почты."
-  }
-
-  if (menuName === "admins") {
-    return state.admins.length === 0
-      ? "Добавьте первого администратора, чтобы открыть доступ к созданию слотов."
-      : "Управляйте доступами, токенами и ручным открытием браузерных профилей."
-  }
-
-  if (menuName === "slots") {
-    return state.workers.length === 0
-      ? "Пока нет слотов. Запустите создание через выбранного администратора."
-      : "Следите за состоянием слотов и быстро восстанавливайте проблемные аккаунты."
-  }
-
-  if (menuName === "mail") {
-    return state.accounts.length === 0
-      ? "Почтовые ящики появятся после создания админов и слотов."
-      : "Выберите аккаунт слева, чтобы забрать входящие письма."
-  }
-
-  if (menuName === "settings") return "Настройте API-ключи и провайдеры почты. Enter для редактирования."
-
-  if (menuName === "pick_admin") return ctx.title ?? "Выберите администратора для следующего действия."
-  if (menuName === "pick_worker") return ctx.title ?? "Выберите слот для следующего действия."
-  if (menuName === "pick_account") return ctx.title ?? "Выберите аккаунт."
-  if (menuName === "confirm") return "Проверьте объект удаления и подтвердите действие."
-
-  return "Операционный экран."
-}
-
 export function getTable(menuName: MenuName, state: AppState, ctx: MenuContext): { headers: string[]; rows: string[][] } {
   if (menuName === "admins" || menuName === "pick_admin") {
     return {
@@ -193,13 +128,6 @@ export function getTable(menuName: MenuName, state: AppState, ctx: MenuContext):
     }
   }
 
-  if (menuName === "mail" || menuName === "pick_account") {
-    return {
-      headers: ["Тип", "Email"],
-      rows: state.accounts.map((a) => [a.kind, a.email]),
-    }
-  }
-
   if (menuName === "confirm") {
     return {
       headers: ["Действие", "Объект"],
@@ -214,7 +142,7 @@ export function getTable(menuName: MenuName, state: AppState, ctx: MenuContext):
 }
 
 export function getHint(menuName: MenuName, _ctx: MenuContext): string {
-  if (menuName === "main") return "↑↓ или 1-5: выбор  Enter: открыть  r: обновить  q: выход"
+  if (menuName === "main") return "↑↓ или 1-4: выбор  Enter: открыть  r: обновить  q: выход"
   if (menuName === "confirm") return "Enter: подтвердить  Esc: отмена"
   return "↑↓ или 1-9: выбор  Enter: действие  Esc: назад  r: обновить  y: копировать лог"
 }
@@ -225,11 +153,9 @@ export function parentMenu(menuName: MenuName, ctx: MenuContext): MenuName {
     main: "main",
     admins: "main",
     slots: "main",
-    mail: "main",
     settings: "main",
     pick_admin: "admins",
     pick_worker: "slots",
-    pick_account: "mail",
     confirm: "main",
   }
   return map[menuName]

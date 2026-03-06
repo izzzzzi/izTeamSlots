@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from typing import Any
 
 import requests
@@ -78,27 +79,38 @@ class TrickAdsProvider(MailProvider):
         endpoint: str,
         json_body: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        try:
-            resp = self._session.post(f"{BASE_URL}{endpoint}", json=json_body)
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                resp = self._session.post(f"{BASE_URL}{endpoint}", json=json_body, timeout=30)
+            except requests.RequestException as e:
+                if attempt < max_attempts:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise MailServiceUnavailable(f"Connection error: {e}") from e
+
             if resp.status_code != 200:
                 body = resp.text or ""
                 summary = _extract_error_summary(body)
                 if resp.status_code == 401:
                     raise MailAuthError(f"[{resp.status_code}] {summary}")
                 if resp.status_code >= 500:
+                    if attempt < max_attempts:
+                        time.sleep(2 ** attempt)
+                        continue
                     raise MailServiceUnavailable(f"[{resp.status_code}] {summary}")
                 raise MailError(f"[{resp.status_code}] {summary}")
-            data: dict[str, Any] = resp.json()
-        except requests.RequestException as e:
-            raise MailServiceUnavailable(f"Connection error: {e}") from e
 
-        if data.get("status") != "success":
-            msg = data.get("message", "")
-            code = data.get("code", 0)
-            if code == 401 or "password" in msg.lower() or "unauthorized" in str(data.get("status", "")).lower():
-                raise MailAuthError(f"API: {data}")
-            raise MailError(f"API: {data}")
-        return data
+            data: dict[str, Any] = resp.json()
+            if data.get("status") != "success":
+                msg = data.get("message", "")
+                code = data.get("code", 0)
+                if code == 401 or "password" in msg.lower() or "unauthorized" in str(data.get("status", "")).lower():
+                    raise MailAuthError(f"API: {data}")
+                raise MailError(f"API: {data}")
+            return data
+
+        raise MailServiceUnavailable("Max retries exceeded")
 
     def generate(self) -> Mailbox:
         data = self._request("/tepmail/generate")
