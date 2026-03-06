@@ -221,14 +221,24 @@ class UIFacade:
         log(f"Браузер {label} открыт. Закройте окно браузера для возврата.")
         wait_for_browser_close(context, log=log)
 
+    def _replace_manager(self, manager: SlotManager) -> None:
+        if self.manager:
+            try:
+                self.manager.close()
+            except Exception:
+                pass
+        self.manager = manager
+
     def login_admin(self, email: str, log: LogFunc) -> None:
-        self.manager = SlotManager(store=self.store, admin_email=email, log=log)
-        self.manager.login_admin()
+        manager = SlotManager(store=self.store, admin_email=email, log=log)
+        self._replace_manager(manager)
+        manager.login_admin()
         self.sync_codex_files()
 
     def login_admin_manual(self, email: str, log: LogFunc) -> None:
-        self.manager = SlotManager(store=self.store, admin_email=email, log=log)
-        self.manager.login_admin_manual()
+        manager = SlotManager(store=self.store, admin_email=email, log=log)
+        self._replace_manager(manager)
+        manager.login_admin_manual()
         self.sync_codex_files()
 
     def run_slots_pipeline(
@@ -238,7 +248,8 @@ class UIFacade:
         log: LogFunc,
         progress: ProgressFunc | None = None,
     ) -> dict[str, int]:
-        self.manager = SlotManager(store=self.store, admin_email=admin_email, log=log, headless=False)
+        manager = SlotManager(store=self.store, admin_email=admin_email, log=log, headless=False)
+        self._replace_manager(manager)
         ok = 0
         for i in range(count):
             slot_no = i + 1
@@ -246,11 +257,11 @@ class UIFacade:
             if progress:
                 progress(slot_no, count, f"slot {slot_no}/{count}")
             try:
-                self.manager.create_invite_login_one()
+                manager.create_invite_login_one()
                 ok += 1
             except Exception as e:
                 log(f"Ошибка: {e}")
-        self.manager._close_admin_page()
+        manager._close_admin_page()
         log(f"Готово: {ok}/{count} слотов")
         self.sync_codex_files()
         return {"ok": ok, "total": count}

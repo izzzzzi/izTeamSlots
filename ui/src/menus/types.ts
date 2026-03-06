@@ -50,7 +50,6 @@ export interface MailAccountRow {
 export interface SettingItem {
   key: string
   label: string
-  value: string
   masked: string
 }
 

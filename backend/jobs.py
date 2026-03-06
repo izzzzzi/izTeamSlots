@@ -67,7 +67,6 @@ class JobManager:
                     {
                         "job_id": job_id,
                         "error": message,
-                        "traceback": tb,
                         "log_path": job_logger.rel_path,
                     },
                 )

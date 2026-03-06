@@ -72,7 +72,7 @@ class RPCServer:
             masked = ""
             if value:
                 masked = value[:4] + "***" + value[-4:] if len(value) > 12 else "***"
-            items.append({"key": key, "label": label, "value": value, "masked": masked})
+            items.append({"key": key, "label": label, "masked": masked})
         return {"items": items, "path": str(self._settings_path())}
 
     def _set_setting(self, key: str, value: str) -> None:
@@ -228,7 +228,9 @@ class RPCServer:
 
         if m == "settings.set":
             key = self._as_str_param(p, "key")
-            value = self._as_str_param(p, "value")
+            value = p.get("value")
+            if not isinstance(value, str):
+                raise RPCError(-32602, "Invalid params", {"details": "'value' must be string"})
             self._set_setting(key, value)
             return make_success_response(req.request_id, {"ok": True})
 
@@ -268,10 +270,7 @@ class RPCServer:
                     RPCError(
                         -32000,
                         "Server error",
-                        {
-                            "details": str(e),
-                            "traceback": tb,
-                        },
+                        {"details": str(e)},
                     ),
                 )
 

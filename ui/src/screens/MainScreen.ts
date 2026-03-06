@@ -375,7 +375,7 @@ export class MainScreen {
 
   private async loadSettings() {
     try {
-      const result = await this.rpc.request<{ items: Array<{ key: string; label: string; value: string; masked: string }> }>("settings.get")
+      const result = await this.rpc.request<{ items: Array<{ key: string; label: string; masked: string }> }>("settings.get")
       this.state = { ...this.state, settings: result.items }
     } catch (error) {
       this.pushLog(`Ошибка загрузки настроек: ${String(error)}`)

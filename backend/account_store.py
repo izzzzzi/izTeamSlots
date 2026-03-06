@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import threading
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -46,6 +47,7 @@ class AccountStore:
         self.base_dir = base_dir
         self.admin_dir = base_dir / "admin"
         self.worker_dir = base_dir / "worker"
+        self._lock = threading.Lock()
         self.admin_dir.mkdir(parents=True, exist_ok=True)
         self.worker_dir.mkdir(parents=True, exist_ok=True)
 
@@ -113,49 +115,52 @@ class AccountStore:
         )
 
     def add_admin(self, email: str, password: str) -> AdminAccount:
-        index = self._read_index(self.admin_dir)
-        if email in index:
-            raise ValueError(f"Админ {email} уже существует")
-        account_id = uuid.uuid4().hex
-        now = datetime.now(timezone.utc).isoformat()
-        index[email] = {"id": account_id, "created_at": now}
-        self._write_index(self.admin_dir, index)
-        account_dir = self.admin_dir / account_id
-        self._write_meta(account_dir, {"email": email, "password": password})
-        return AdminAccount(id=account_id, email=email, password=password, created_at=now)
+        with self._lock:
+            index = self._read_index(self.admin_dir)
+            if email in index:
+                raise ValueError(f"Админ {email} уже существует")
+            account_id = uuid.uuid4().hex
+            now = datetime.now(timezone.utc).isoformat()
+            index[email] = {"id": account_id, "created_at": now}
+            self._write_index(self.admin_dir, index)
+            account_dir = self.admin_dir / account_id
+            self._write_meta(account_dir, {"email": email, "password": password})
+            return AdminAccount(id=account_id, email=email, password=password, created_at=now)
 
     def update_admin(self, account: AdminAccount) -> None:
-        index = self._read_index(self.admin_dir)
-        if account.email not in index:
-            raise ValueError(f"Админ {account.email} не найден")
-        info = index[account.email]
-        if account.last_login:
-            info["last_login"] = account.last_login
-        self._write_index(self.admin_dir, index)
-        account_dir = self.admin_dir / info["id"]
-        meta: dict[str, Any] = {
-            "email": account.email,
-            "password": account.password,
-        }
-        if account.access_token is not None:
-            meta["access_token"] = account.access_token
-        if account.workspace_id is not None:
-            meta["workspace_id"] = account.workspace_id
-        if account.account_id is not None:
-            meta["account_id"] = account.account_id
-        if account.workspaces is not None:
-            meta["workspaces"] = account.workspaces
-        self._write_meta(account_dir, meta)
+        with self._lock:
+            index = self._read_index(self.admin_dir)
+            if account.email not in index:
+                raise ValueError(f"Админ {account.email} не найден")
+            info = index[account.email]
+            if account.last_login:
+                info["last_login"] = account.last_login
+            self._write_index(self.admin_dir, index)
+            account_dir = self.admin_dir / info["id"]
+            meta: dict[str, Any] = {
+                "email": account.email,
+                "password": account.password,
+            }
+            if account.access_token is not None:
+                meta["access_token"] = account.access_token
+            if account.workspace_id is not None:
+                meta["workspace_id"] = account.workspace_id
+            if account.account_id is not None:
+                meta["account_id"] = account.account_id
+            if account.workspaces is not None:
+                meta["workspaces"] = account.workspaces
+            self._write_meta(account_dir, meta)
 
     def delete_admin(self, email: str) -> None:
-        index = self._read_index(self.admin_dir)
-        info = index.pop(email, None)
-        if not info:
-            return
-        self._write_index(self.admin_dir, index)
-        account_dir = self.admin_dir / info["id"]
-        if account_dir.exists():
-            shutil.rmtree(account_dir)
+        with self._lock:
+            index = self._read_index(self.admin_dir)
+            info = index.pop(email, None)
+            if not info:
+                return
+            self._write_index(self.admin_dir, index)
+            account_dir = self.admin_dir / info["id"]
+            if account_dir.exists():
+                shutil.rmtree(account_dir)
 
     def get_admin_profile_dir(self, account: AdminAccount) -> Path:
         profile_dir = self.admin_dir / account.id / "browser_profile"
@@ -203,63 +208,66 @@ class AccountStore:
         )
 
     def add_worker(self, email: str, password: str, admin_email: str) -> WorkerAccount:
-        index = self._read_index(self.worker_dir)
-        if email in index:
-            raise ValueError(f"Worker {email} уже существует")
-        worker_id = uuid.uuid4().hex
-        now = datetime.now(timezone.utc).isoformat()
-        index[email] = {
-            "id": worker_id,
-            "status": "created",
-            "admin_email": admin_email,
-            "created_at": now,
-        }
-        self._write_index(self.worker_dir, index)
-        account_dir = self.worker_dir / worker_id
-        self._write_meta(account_dir, {
-            "email": email,
-            "password": password,
-            "status": "created",
-        })
-        return WorkerAccount(
-            id=worker_id, email=email, password=password,
-            admin_email=admin_email, created_at=now,
-        )
+        with self._lock:
+            index = self._read_index(self.worker_dir)
+            if email in index:
+                raise ValueError(f"Worker {email} уже существует")
+            worker_id = uuid.uuid4().hex
+            now = datetime.now(timezone.utc).isoformat()
+            index[email] = {
+                "id": worker_id,
+                "status": "created",
+                "admin_email": admin_email,
+                "created_at": now,
+            }
+            self._write_index(self.worker_dir, index)
+            account_dir = self.worker_dir / worker_id
+            self._write_meta(account_dir, {
+                "email": email,
+                "password": password,
+                "status": "created",
+            })
+            return WorkerAccount(
+                id=worker_id, email=email, password=password,
+                admin_email=admin_email, created_at=now,
+            )
 
     def update_worker(self, account: WorkerAccount) -> None:
-        index = self._read_index(self.worker_dir)
-        if account.email not in index:
-            raise ValueError(f"Worker {account.email} не найден")
-        info = index[account.email]
-        info["status"] = account.status
-        if account.admin_email is not None:
-            info["admin_email"] = account.admin_email
-        else:
-            info.pop("admin_email", None)
-        self._write_index(self.worker_dir, index)
-        account_dir = self.worker_dir / info["id"]
-        meta: dict[str, Any] = {
-            "email": account.email,
-            "password": account.password,
-            "status": account.status,
-        }
-        if account.openai_password is not None:
-            meta["openai_password"] = account.openai_password
-        if account.access_token is not None:
-            meta["access_token"] = account.access_token
-        if account.workspace_id is not None:
-            meta["workspace_id"] = account.workspace_id
-        self._write_meta(account_dir, meta)
+        with self._lock:
+            index = self._read_index(self.worker_dir)
+            if account.email not in index:
+                raise ValueError(f"Worker {account.email} не найден")
+            info = index[account.email]
+            info["status"] = account.status
+            if account.admin_email is not None:
+                info["admin_email"] = account.admin_email
+            else:
+                info.pop("admin_email", None)
+            self._write_index(self.worker_dir, index)
+            account_dir = self.worker_dir / info["id"]
+            meta: dict[str, Any] = {
+                "email": account.email,
+                "password": account.password,
+                "status": account.status,
+            }
+            if account.openai_password is not None:
+                meta["openai_password"] = account.openai_password
+            if account.access_token is not None:
+                meta["access_token"] = account.access_token
+            if account.workspace_id is not None:
+                meta["workspace_id"] = account.workspace_id
+            self._write_meta(account_dir, meta)
 
     def delete_worker(self, email: str) -> None:
-        index = self._read_index(self.worker_dir)
-        info = index.pop(email, None)
-        if not info:
-            return
-        self._write_index(self.worker_dir, index)
-        account_dir = self.worker_dir / info["id"]
-        if account_dir.exists():
-            shutil.rmtree(account_dir)
+        with self._lock:
+            index = self._read_index(self.worker_dir)
+            info = index.pop(email, None)
+            if not info:
+                return
+            self._write_index(self.worker_dir, index)
+            account_dir = self.worker_dir / info["id"]
+            if account_dir.exists():
+                shutil.rmtree(account_dir)
 
     def get_worker_profile_dir(self, account: WorkerAccount) -> Path:
         profile_dir = self.worker_dir / account.id / "browser_profile"
