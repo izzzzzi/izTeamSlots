@@ -74,10 +74,13 @@ npm install
 ```
 
 `npm install` автоматически запустит setup-скрипт, который:
-- Проверит Python 3.11+, pip, Bun, Chrome
-- Установит Python-зависимости (`seleniumbase`, `requests`)
-- Установит UI-зависимости (`bun install`)
+- Проверит Python 3.11+
+- Установит [uv](https://docs.astral.sh/uv/) если его нет (быстрый Python package manager)
+- Установит Python-зависимости через uv (`seleniumbase`, `requests`)
+- Установит [Bun](https://bun.sh) если его нет + UI-зависимости
 - Создаст `.env` из `.env.example` если его нет
+
+> Chrome и chromedriver скачиваются автоматически при первом запуске через SeleniumBase.
 
 Если нужно перезапустить setup вручную:
 

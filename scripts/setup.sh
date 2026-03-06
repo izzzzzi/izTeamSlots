@@ -33,14 +33,19 @@ done
 [ -z "$PYTHON" ] && fail "Python 3.11+ not found. Install: https://python.org"
 ok "Python: $($PYTHON --version)"
 
-# ── pip ─────────────────────────────────────────────────
-echo "Checking pip..."
-$PYTHON -m pip --version &>/dev/null || fail "pip not found. Run: $PYTHON -m ensurepip"
-ok "pip: $($PYTHON -m pip --version 2>&1 | head -1)"
+# ── uv ──────────────────────────────────────────────────
+echo "Checking uv..."
+if ! command -v uv &>/dev/null; then
+  warn "uv not found. Installing..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+fi
+command -v uv &>/dev/null || fail "uv install failed. Install manually: https://docs.astral.sh/uv"
+ok "uv: $(uv --version)"
 
 # ── Python deps ─────────────────────────────────────────
 echo "Installing Python dependencies..."
-$PYTHON -m pip install -q -r "$ROOT/requirements.txt"
+uv pip install --system -q -r "$ROOT/requirements.txt"
 ok "Python deps installed"
 
 # ── Bun ─────────────────────────────────────────────────
@@ -59,23 +64,6 @@ cd "$ROOT/ui"
 bun install --frozen-lockfile 2>/dev/null || bun install
 ok "UI deps installed"
 cd "$ROOT"
-
-# ── Chrome ──────────────────────────────────────────────
-echo "Checking Chrome..."
-CHROME_FOUND=false
-for chrome_path in \
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-  "/usr/bin/google-chrome" \
-  "/usr/bin/google-chrome-stable" \
-  "/usr/bin/chromium-browser" \
-  "/usr/bin/chromium"; do
-  if [ -x "$chrome_path" ] || [ -f "$chrome_path" ]; then
-    CHROME_FOUND=true
-    ok "Chrome: $chrome_path"
-    break
-  fi
-done
-$CHROME_FOUND || warn "Chrome not found. SeleniumBase will try to download it."
 
 # ── .env ────────────────────────────────────────────────
 if [ ! -f "$ROOT/.env" ]; then
