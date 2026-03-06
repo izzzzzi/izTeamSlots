@@ -83,7 +83,7 @@ izTeamSlots/
 ### npm (рекомендуется)
 
 ```bash
-npm install -g izteamslots@latest
+npm cache clean --force && npm install -g izteamslots@latest
 ```
 
 Установщик автоматически поставит Python-зависимости (через [uv](https://docs.astral.sh/uv/)), [Bun](https://bun.sh) и всё остальное.
