@@ -421,6 +421,31 @@ def _submit_about_you_form(page: Page, log: Callable[[str], Any]) -> None:
         )
 
 
+def _is_oops_error(page: Page) -> bool:
+    """Проверить, показывается ли страница 'Oops, an error occurred!'."""
+    try:
+        return page.locator('button[data-dd-action-name="Try again"]').count() > 0
+    except Exception:
+        return False
+
+
+def _handle_oops_retry(
+    page: Page, log: Callable[[str], Any], max_retries: int = 3,
+) -> bool:
+    """Если на странице 'Oops' — нажать 'Try again' до max_retries раз. True = удалось уйти."""
+    for attempt in range(1, max_retries + 1):
+        if not _is_oops_error(page):
+            return True
+        log(f"[oops] Обнаружена ошибка 'Oops', нажимаю Try again ({attempt}/{max_retries})...")
+        _save_debug_html(page, f"oops-error-attempt-{attempt}", log)
+        try:
+            page.locator('button[data-dd-action-name="Try again"]').click()
+        except Exception:
+            pass
+        time.sleep(5)
+    return not _is_oops_error(page)
+
+
 def extract_invite_link(body: str) -> str | None:
     match = re.search(r'href="(https://chatgpt\.com/auth/login\?[^"]+)"', body)
     if match:
@@ -495,14 +520,37 @@ def _launch_page(profile_dir: Path, headless: bool = False) -> tuple[Page, Brows
         except StopIteration:
             profile_dir.rmdir()
     _kill_chrome_for_profile(profile_dir)
+    _MOBILE_UA = (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+        "Version/17.0 Mobile/15E148 Safari/604.1"
+    )
     driver = create_driver(
         browser="chrome",
         headed=not headless,
         uc=True,
         headless2=headless,
         user_data_dir=str(profile_dir.resolve()),
+        locale_code="en",
+        mobile=True,
+        d_width=393,
+        d_height=852,
+        d_p_r=3,
     )
     driver.set_script_timeout(60)
+
+    # UC mode применяет setDeviceMetricsOverride внутри driver.get(),
+    # но User-Agent и touch нужно выставить отдельно — CDP-команды
+    # для UA и touch сохраняются между навигациями.
+    try:
+        driver.execute_cdp_cmd("Emulation.setUserAgentOverride", {
+            "userAgent": _MOBILE_UA,
+        })
+        driver.execute_cdp_cmd("Emulation.setTouchEmulationEnabled", {
+            "enabled": True,
+        })
+    except Exception:
+        pass
 
     # SeleniumBase UC mode перехватывает driver.get() и внутри вызывает driver.close()
     # для антидетекта. Если в браузере только 1 таб — Chrome зависает на
@@ -581,6 +629,11 @@ def open_browser(
     WebDriverWait(driver, 30).until(
         lambda d: d.execute_script("return document.readyState") in {"interactive", "complete"}
     )
+
+    # Oops fallback
+    if _is_oops_error(page):
+        _handle_oops_retry(page, _log)
+
     _log(f"Браузер открыт: {page.url}")
     return page, context
 
@@ -926,6 +979,12 @@ def oauth_login(
         page.goto(authorize_url, wait_until="domcontentloaded", timeout=30000)
         time.sleep(2)
 
+        # Oops fallback
+        if _is_oops_error(page):
+            if not _handle_oops_retry(page, _log):
+                raise RuntimeError("Страница 'Oops' не исчезла после retry")
+            time.sleep(2)
+
         if "log-in-or-create-account" in page.url and page.locator('a[href="/log-in"]').count() > 0:
             page.locator('a[href="/log-in"]').click()
             _log("Нажато 'Войти'")
@@ -1153,6 +1212,12 @@ def browser_register(
         page.goto(invite_url, wait_until="domcontentloaded")
         time.sleep(2)
 
+        # Oops fallback — страница ошибки вместо формы
+        if _is_oops_error(page):
+            if not _handle_oops_retry(page, _log):
+                raise RuntimeError("Страница 'Oops' не исчезла после retry")
+            time.sleep(2)
+
         if page.locator('[data-testid="signup-button"]').count() > 0:
             page.locator('[data-testid="signup-button"]').click()
             time.sleep(2)
@@ -1224,6 +1289,21 @@ def browser_register(
                 break
             if page.locator('button[name="workspace_id"]').count() > 0:
                 break
+
+            # Oops — ошибка сервера, нажать Try again
+            if _is_oops_error(page):
+                _log("[oops] Ошибка на about-you, нажимаю Try again...")
+                _handle_oops_retry(page, _log)
+                time.sleep(3)
+                # После retry форма может появиться снова — заполняем
+                if page.locator('input[name="name"]').count() > 0:
+                    _wait_fieldset_enabled(page, _log, timeout=15)
+                    page.locator('input[name="name"]').fill(name)
+                    _fill_birthday(page, day, month, year, _log)
+                    page.locator('input[name="name"]').fill(name)
+                    _submit_about_you_form(page, _log)
+                    _log("Форма повторно заполнена после Oops")
+                continue
 
             # Застряли на about-you — ждём подольше перед retry
             if "about-you" in cur_url and not submit_retried:
