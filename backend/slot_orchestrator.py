@@ -173,25 +173,7 @@ class SlotManager:
         self._finalize_admin_login(page, session, manual_web_flow=True)
 
     def login_admin(self) -> None:
-        """Логин админа через OAuth PKCE — получаем все токены (access, id, refresh)."""
-        if not self._admin:
-            raise RuntimeError(f"Админ {self.admin_email} не найден в AccountStore")
-
-        mailbox = Mailbox(email=self._admin.email, password=self._admin.password)
-        profile_dir = self.store.get_admin_profile_dir(self._admin)
-        mail = self._get_admin_mail()
-
-        self._log("Логин админа (OAuth PKCE)...")
-        page, session = oauth_login(
-            email=self._admin.email,
-            password=self._admin.password,
-            mail_client=mail,
-            mailbox=mailbox,
-            profile_dir=profile_dir,
-            log=self._log,
-            headless=self._headless,
-        )
-        self._finalize_admin_login(page, session)
+        raise RuntimeError("Авто-вход админа временно отключён. Используйте ручной вход через браузер.")
 
     def login_admin_manual(self) -> None:
         """Ручной логин админа в браузере с последующим автоматическим сохранением токенов."""

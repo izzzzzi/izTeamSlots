@@ -201,10 +201,7 @@ class UIFacade:
         self.manager = manager
 
     def login_admin(self, email: str, log: LogFunc) -> None:
-        manager = SlotManager(store=self.store, admin_email=email, log=log)
-        self._replace_manager(manager)
-        manager.login_admin()
-        self.sync_codex_files()
+        raise RuntimeError("Авто-вход админа временно отключён. Используйте ручной вход через браузер.")
 
     def login_admin_manual(self, email: str, log: LogFunc) -> None:
         manager = SlotManager(store=self.store, admin_email=email, log=log)
@@ -307,4 +304,3 @@ class UIFacade:
         log(f"Готово: {ok}/{total}")
         self.sync_codex_files()
         return {"ok": ok, "total": total}
-

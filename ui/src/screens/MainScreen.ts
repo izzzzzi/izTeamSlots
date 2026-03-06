@@ -1166,9 +1166,14 @@ export class MainScreen {
 
   private async promptLoginMode(): Promise<"auto" | "manual" | null> {
     const value = await this.promptSelect("Режим входа", [
-      { value: "auto", label: "Авто", hint: "Логин по данным из TUI." },
+      { value: "auto", label: "Авто", hint: "Временно недоступно." },
       { value: "manual", label: "Вручную", hint: "Логин вручную в браузере." },
     ])
+    if (value === "auto") {
+      this.pushLog("Авто-вход админа временно отключён. Используйте ручной режим.")
+      this.render()
+      return null
+    }
     if (value === "auto" || value === "manual") return value
     return null
   }
