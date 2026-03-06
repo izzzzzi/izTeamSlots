@@ -1,3 +1,10 @@
+## [1.1.5](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.4...v1.1.5) (2026-03-06)
+
+
+### Bug Fixes
+
+* use shell mode on Windows for spawn/exec (backend + bun launch) ([3dbc103](https://github.com/izzzzzi/izTeamSlots/commit/3dbc103b47268bd9260dcefe36cb4a5db668e243))
+
 ## [1.1.4](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.3...v1.1.4) (2026-03-06)
 
 
