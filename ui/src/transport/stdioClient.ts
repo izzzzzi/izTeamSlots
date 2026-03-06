@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessByStdio } from "node:child_process"
+import { existsSync } from "node:fs"
 import type { Readable, Writable } from "node:stream"
 import { randomUUID } from "node:crypto"
 import { delimiter, dirname, resolve } from "node:path"
@@ -27,6 +28,19 @@ function projectRootFromCurrentFile() {
   return resolve(here, "../../..")
 }
 
+function resolveDefaultPython(): string {
+  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN
+  if (process.env.PYTHON) return process.env.PYTHON
+  const root = process.env.IZTEAMSLOTS_ROOT ?? projectRootFromCurrentFile()
+  const venvPython = process.platform === "win32"
+    ? resolve(root, ".venv", "Scripts", "python.exe")
+    : resolve(root, ".venv", "bin", "python")
+  try {
+    if (existsSync(venvPython)) return venvPython
+  } catch { /* ignore */ }
+  return process.platform === "win32" ? "python" : "python3"
+}
+
 export class StdioRpcClient {
   private proc: ChildProcessByStdio<Writable, Readable, Readable> | null = null
   private readonly pending = new Map<
@@ -40,8 +54,7 @@ export class StdioRpcClient {
   private readonly errorHandlers = new Set<ErrorOutputHandler>()
 
   constructor(
-    private readonly pythonCmd: string =
-      process.env.PYTHON_BIN ?? process.env.PYTHON ?? (process.platform === "win32" ? "python" : "python3"),
+    private readonly pythonCmd: string = resolveDefaultPython(),
     private readonly projectRoot: string = process.env.IZTEAMSLOTS_ROOT ?? projectRootFromCurrentFile(),
   ) {}
 

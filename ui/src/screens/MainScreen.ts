@@ -59,7 +59,8 @@ function copyToSystemClipboard(text: string): boolean {
     if (platform === "darwin") {
       execFileSync("pbcopy", [], { input: value })
     } else if (platform === "win32") {
-      execFileSync("clip", [], { input: value })
+      execFileSync("powershell", ["-NoProfile", "-Command",
+        "Set-Clipboard ([Console]::In.ReadToEnd().TrimEnd())"], { input: value })
     } else {
       execFileSync("xclip", ["-selection", "clipboard"], { input: value })
     }

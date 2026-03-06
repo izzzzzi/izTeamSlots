@@ -16,10 +16,15 @@ jobs:
       - uses: astral-sh/ruff-action@v3
 
   typecheck-ts:
-    name: TypeScript
-    runs-on: ubuntu-latest
+    name: TypeScript (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: cd ui && bun install --frozen-lockfile 2>/dev/null || bun install
-      - run: cd ui && bun run typecheck
+      - shell: bash
+        run: cd ui && bun install --frozen-lockfile 2>/dev/null || bun install
+      - shell: bash
+        run: cd ui && bun run typecheck

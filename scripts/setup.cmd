@@ -27,6 +27,19 @@ if "%PYTHON%"=="" (
     echo   [x] Python 3.11+ not found. Install: https://python.org
     exit /b 1
 )
+:: Validate version >= 3.11
+for /f "tokens=1,2 delims=." %%a in ("%PYVER%") do (
+    set "PYMAJOR=%%a"
+    set "PYMINOR=%%b"
+)
+if !PYMAJOR! LSS 3 (
+    echo   [x] Python 3.11+ required, found %PYVER%. Install: https://python.org
+    exit /b 1
+)
+if !PYMAJOR! EQU 3 if !PYMINOR! LSS 11 (
+    echo   [x] Python 3.11+ required, found %PYVER%. Install: https://python.org
+    exit /b 1
+)
 echo   [v] Python: %PYVER%
 
 :: ── uv ──────────────────────────────────────────────────
@@ -39,7 +52,7 @@ if errorlevel 1 (
 )
 where uv >nul 2>&1
 if errorlevel 1 (
-    echo   [x] uv install failed. Install manually: https://docs.astral.sh/uv
+    echo   [x] uv install failed. Behind proxy/firewall? Install manually: https://docs.astral.sh/uv
     exit /b 1
 )
 for /f "tokens=*" %%v in ('uv --version') do echo   [v] %%v
@@ -66,7 +79,7 @@ if errorlevel 1 (
 )
 where bun >nul 2>&1
 if errorlevel 1 (
-    echo   [x] Bun install failed. Install manually: https://bun.sh
+    echo   [x] Bun install failed. Behind proxy/firewall? Install manually: https://bun.sh
     exit /b 1
 )
 for /f "tokens=*" %%v in ('bun --version') do echo   [v] Bun: %%v

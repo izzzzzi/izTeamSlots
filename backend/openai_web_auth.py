@@ -505,20 +505,25 @@ def _kill_chrome_for_profile(profile_dir: Path) -> None:
     killed = False
     try:
         if os.name == "nt":
-            # Windows: use wmic to find chrome processes with this profile
-            out = subprocess.check_output(
-                ["wmic", "process", "where", "name like '%chrome%'", "get", "ProcessId,CommandLine"],
-                text=True, timeout=10,
+            # Windows: use PowerShell Get-CimInstance (wmic removed on newer Win11)
+            ps_cmd = (
+                "Get-CimInstance Win32_Process -Filter \"name like '%chrome%'\" | "
+                "ForEach-Object { \"$($_.ProcessId)|$($_.CommandLine)\" }"
             )
+            out = subprocess.check_output(
+                ["powershell", "-NoProfile", "-Command", ps_cmd],
+                text=True, timeout=15,
+            )
+            resolved_win = resolved.replace("/", "\\")
             for line in out.splitlines():
-                if resolved.replace("/", "\\") not in line and resolved not in line:
+                line = line.strip()
+                if "|" not in line:
                     continue
-                # PID is last token on the line
-                parts = line.strip().split()
-                if not parts:
+                pid_str, cmdline = line.split("|", 1)
+                if resolved_win not in cmdline and resolved not in cmdline:
                     continue
                 try:
-                    pid = int(parts[-1])
+                    pid = int(pid_str.strip())
                     if pid == os.getpid():
                         continue
                     subprocess.run(["taskkill", "/F", "/PID", str(pid)], timeout=5,

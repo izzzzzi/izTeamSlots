@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFileSync, execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,13 +31,7 @@ if (isWin) {
 const args = ["run", "--cwd", resolve(root, "ui"), "src/main.ts", ...process.argv.slice(2)];
 
 try {
-  if (isWin) {
-    // On Windows, execFileSync may fail to resolve commands — use shell
-    const cmd = [bunCmd, ...args].map(a => `"${a}"`).join(" ");
-    execSync(cmd, { stdio: "inherit", cwd: root, env: process.env });
-  } else {
-    execFileSync(bunCmd, args, { stdio: "inherit", cwd: root, env: process.env });
-  }
+  execFileSync(bunCmd, args, { stdio: "inherit", cwd: root, env: process.env, shell: isWin });
 } catch (err) {
   process.exit(err.status ?? 1);
 }
