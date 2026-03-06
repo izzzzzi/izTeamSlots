@@ -241,8 +241,3 @@ flowchart TD
 - Не публикуйте папки `accounts/` и `codex/` в публичные репозитории.
 - Для стабильной работы перелогина у worker должен быть `openai_password`.
 
----
-
-## Участие в разработке
-
-См. [CONTRIBUTING.md](CONTRIBUTING.md).
