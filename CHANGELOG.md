@@ -1,3 +1,10 @@
+## [1.5.5](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.4...v1.5.5) (2026-03-06)
+
+
+### Bug Fixes
+
+* **auth:** stabilize manual flows and tab focus ([1e909c2](https://github.com/izzzzzi/izTeamSlots/commit/1e909c220c3bf4120c5367e7e313632cc903a024))
+
 ## [1.5.4](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.3...v1.5.4) (2026-03-06)
 
 
