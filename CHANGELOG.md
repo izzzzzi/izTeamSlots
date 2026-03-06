@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.6...v1.2.0) (2026-03-06)
+
+
+### Features
+
+* load config from ~/.izteamslots/.env, update README install docs ([99ca787](https://github.com/izzzzzi/izTeamSlots/commit/99ca787207d65cfde29a9b0bd173dc870ca59ee6))
+
 ## [1.1.6](https://github.com/izzzzzi/izTeamSlots/compare/v1.1.5...v1.1.6) (2026-03-06)
 
 
