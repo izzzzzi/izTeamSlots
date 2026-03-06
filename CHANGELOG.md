@@ -1,3 +1,11 @@
+## [1.3.3](https://github.com/izzzzzi/izTeamSlots/compare/v1.3.2...v1.3.3) (2026-03-06)
+
+
+### Bug Fixes
+
+* quick start recommends configuring mail API key first ([c852b9d](https://github.com/izzzzzi/izTeamSlots/commit/c852b9d63d9e5867b897791e8fd11e712e1a515f))
+* remove extra leading spaces from hero logo ([ddb43bb](https://github.com/izzzzzi/izTeamSlots/commit/ddb43bbc6ba0075736ac7acba433032b45dbfc37))
+
 ## [1.3.2](https://github.com/izzzzzi/izTeamSlots/compare/v1.3.1...v1.3.2) (2026-03-06)
 
 
