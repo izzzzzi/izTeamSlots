@@ -11,10 +11,10 @@ from .base import (
     Inbox,
     Mail,
     MailAuthError,
+    Mailbox,
     MailError,
     MailProvider,
     MailServiceUnavailable,
-    Mailbox,
 )
 
 DEFAULT_BASE_URL = "https://v1.boomlify.com"

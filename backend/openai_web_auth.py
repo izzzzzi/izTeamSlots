@@ -18,14 +18,14 @@ from pathlib import Path
 from typing import Any, Callable
 
 import requests
-from seleniumbase import Driver as create_driver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from seleniumbase import Driver as create_driver
 
 from . import PROJECT_ROOT as _PROJECT_ROOT
-from .mail import MailError, MailProvider, Mailbox
+from .mail import Mailbox, MailError, MailProvider
 
 LOGIN_URL = "https://chatgpt.com/auth/login_with"
 
@@ -1388,7 +1388,7 @@ def browser_register(
             raise TimeoutError("Таймаут 120000мс: ни один селектор/URL не сработал")
 
         return page
-    except Exception as e:
+    except Exception:
         try:
             _log(f"[диагностика] URL при ошибке: {page.url}")
             _save_debug_html(page, f"register-error-{email}", _log)

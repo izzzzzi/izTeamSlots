@@ -28,10 +28,10 @@ from .base import (
     Inbox,
     Mail,
     MailAuthError,
+    Mailbox,
     MailError,
     MailProvider,
     MailServiceUnavailable,
-    Mailbox,
 )
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")

@@ -11,10 +11,10 @@ from .base import (
     Inbox,
     Mail,
     MailAuthError,
+    Mailbox,
     MailError,
     MailProvider,
     MailServiceUnavailable,
-    Mailbox,
 )
 
 BASE_URL = "https://www.trickadsagencyltd.com"

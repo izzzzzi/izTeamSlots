@@ -2,7 +2,19 @@
 
 # izTeamSlots
 
-**Менеджер ChatGPT Team слотов с авто-регистрацией через временную почту Boomlify и обновлением Codex-сессий**
+**Менеджер ChatGPT Team слотов с авто-регистрацией через временную почту и обновлением Codex-сессий**
+
+[![CI](https://github.com/izzzzzi/izTeamSlots/actions/workflows/ci.yml/badge.svg)](https://github.com/izzzzzi/izTeamSlots/actions/workflows/ci.yml)
+[![Release](https://github.com/izzzzzi/izTeamSlots/actions/workflows/release.yml/badge.svg)](https://github.com/izzzzzi/izTeamSlots/actions/workflows/release.yml)
+[![npm version](https://img.shields.io/npm/v/izteamslots.svg?style=flat&colorA=18181B&colorB=28CF8D)](https://www.npmjs.com/package/izteamslots)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat&colorA=18181B&colorB=28CF8D)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?style=flat&colorA=18181B&colorB=3776AB)](https://python.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat&colorA=18181B&colorB=3178C6)](https://www.typescriptlang.org/)
+[![Bun](https://img.shields.io/badge/Bun-runtime-orange?style=flat&colorA=18181B&colorB=FBF0DF)](https://bun.sh/)
+
+<br />
+
+<img src="img/demo.gif" alt="izTeamSlots demo" width="600" />
 
 </div>
 

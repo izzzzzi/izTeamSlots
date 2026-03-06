@@ -31,7 +31,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from .base import Inbox, Mail, MailAuthError, MailError, MailProvider, MailServiceUnavailable, Mailbox
+from .base import Inbox, Mail, MailAuthError, Mailbox, MailError, MailProvider, MailServiceUnavailable
 
 __all__ = [
     "Inbox",

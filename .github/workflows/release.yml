@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    name: Precheck
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Version & Publish
+    needs: ci
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[auto-version]')"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Detect bump type from conventional commits
+        id: version
+        run: |
+          LAST_TAG=$(git tag -l "v*" --sort=-v:refname | head -1)
+          if [ -z "$LAST_TAG" ]; then
+            DIFF_REF=$(git rev-list --max-parents=0 HEAD)
+          else
+            DIFF_REF="$LAST_TAG"
+          fi
+
+          BUMP="patch"
+          COMMITS=$(git log --format="%s" "$DIFF_REF"..HEAD 2>/dev/null || true)
+          while IFS= read -r msg; do
+            if echo "$msg" | grep -qiE "BREAKING CHANGE|^feat!:|^fix!:"; then
+              BUMP="major"
+              break
+            elif echo "$msg" | grep -qiE "^feat(\(.+\))?:"; then
+              BUMP="minor"
+            fi
+          done <<< "$COMMITS"
+
+          CURRENT=$(jq -r '.version' package.json)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW="${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=${NEW}" >> "$GITHUB_OUTPUT"
+          echo "bump=${BUMP}" >> "$GITHUB_OUTPUT"
+          echo "Bump: ${BUMP} → v${NEW}"
+
+      - name: Bump version in package.json
+        run: |
+          jq --arg v "${{ steps.version.outputs.version }}" '.version = $v' package.json > tmp.json && mv tmp.json package.json
+
+      - name: Commit and tag
+        run: |
+          git add package.json
+          git commit -m "$(cat <<'EOF'
+          chore: bump to v${{ steps.version.outputs.version }} [auto-version]
+          EOF
+          )"
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin main --tags
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --title "v${{ steps.version.outputs.version }}" \
+            --generate-notes

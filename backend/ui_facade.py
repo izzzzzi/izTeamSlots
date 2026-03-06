@@ -8,8 +8,12 @@ from typing import Any, Callable
 
 from . import PROJECT_ROOT
 from .account_store import AccountStore
+from .dto import AdminRow, AppStateDTO, MailAccountRow, WorkerRow
+from .mail import Mailbox, create_provider_for_mailbox
 from .openai_web_auth import (
     close_browser as close_br,
+)
+from .openai_web_auth import (
     oauth_login,
     oauth_login_manual,
     open_browser,
@@ -17,10 +21,6 @@ from .openai_web_auth import (
     wait_for_browser_close,
 )
 from .slot_orchestrator import SlotManager
-from .mail import Mailbox, create_provider_for_mailbox
-
-from .dto import AdminRow, AppStateDTO, MailAccountRow, WorkerRow
-
 
 LogFunc = Callable[[str], Any]
 ProgressFunc = Callable[[int, int, str | None], None]

@@ -4,7 +4,9 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from .mail import MailProvider, Mailbox, create_provider, create_slot_provider
+from .account_store import AccountStore, AdminAccount, WorkerAccount
+from .chatgpt_workspace_api import ChatGPTWorkspaceAPI
+from .mail import Mailbox, MailProvider, create_provider, create_slot_provider
 from .openai_web_auth import (
     Page,
     browser_register,
@@ -19,8 +21,6 @@ from .openai_web_auth import (
     save_codex_file,
     select_workspace,
 )
-from .chatgpt_workspace_api import ChatGPTWorkspaceAPI
-from .account_store import AccountStore, AdminAccount, WorkerAccount
 
 
 class SlotManager:
