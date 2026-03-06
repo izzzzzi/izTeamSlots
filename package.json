@@ -1,0 +1,9 @@
+{
+  "name": "izteamslots",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "bun run --cwd ui src/main.ts",
+    "typecheck:ui": "npm --prefix ui run typecheck"
+  }
+}

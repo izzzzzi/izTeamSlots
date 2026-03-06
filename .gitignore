@@ -1,0 +1,31 @@
+# Runtime data (secrets, tokens, browser profiles)
+accounts/
+codex/
+downloaded_files/
+profiles.json
+.env
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+node_modules/
+
+# Bun
+bun.lockb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code local settings
+.claude/
