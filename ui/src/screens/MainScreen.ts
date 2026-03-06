@@ -12,11 +12,6 @@ const EMPTY_STATE: AppState = {
   workers: [],
 }
 
-const HERO_LOGO = [
-  "izTeamSlots",
-  "Локальный центр управления слотами",
-].join("\n")
-
 type RpcJobResult = { job_id: string }
 
 type PromptOption = {
@@ -35,6 +30,27 @@ type PromptState = {
   options: PromptOption[]
   selectedIndex: number
   resolve: ((value: string | null) => void) | null
+}
+
+type LayoutMode = "full" | "compact" | "fallback"
+
+type LayoutMetrics = {
+  mode: LayoutMode
+  width: number
+  height: number
+  summaryHeight: number
+  primaryHeight: number
+  detailHeight: number
+  menuHeight: number
+  showDetail: boolean
+  summaryWidth: number
+  primaryWidth: number
+  detailWidth: number
+  menuWidth: number
+  statusWidth: number
+  menuMaxVisible: number
+  detailLogLimit: number
+  showMenuIndicators: boolean
 }
 
 type AnyRenderable = { content?: unknown }
@@ -103,6 +119,17 @@ function statusLabel(value: string | null | undefined): string {
   return value
 }
 
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+function truncateText(value: string, width: number): string {
+  if (width <= 0) return ""
+  if (width === 1) return value.slice(0, 1)
+  if (value.length <= width) return value
+  return `${value.slice(0, width - 1)}…`
+}
+
 function hasFlag(row: unknown, key: string): boolean {
   if (!row || typeof row !== "object") return false
   return Boolean((row as Record<string, unknown>)[key])
@@ -113,47 +140,31 @@ function getMenuOptionDescription(option: MenuOption | undefined): string {
   if (extra?.description) return extra.description
   const optionId = option?.id ?? ""
 
-  // Главное меню
-  if (optionId === "menu_admins")
-    return "Управление администраторами: добавление, логин (авто/ручной), открытие браузерного профиля и удаление. Админ — основа для создания слотов."
-  if (optionId === "menu_slots")
-    return "Создание новых слотов через пайплайн, перелогин одного или всех сразу, открытие браузера для проверки и удаление."
-  if (optionId === "menu_settings")
-    return "API-ключи Boomlify, домен временной почты и провайдеры. Без настроек автоматические операции не работают."
-  if (optionId === "menu_exit")
-    return "Корректно завершить работу: сохранить состояние и закрыть интерфейс."
+  if (optionId === "menu_admins") return "Открыть раздел админов."
+  if (optionId === "menu_slots") return "Открыть раздел слотов."
+  if (optionId === "menu_settings") return "Открыть настройки."
+  if (optionId === "menu_exit") return "Закрыть приложение."
 
-  // Админы
-  if (optionId === "adm_add")
-    return "Добавить нового админа. Авто-режим: email и пароль вводятся здесь, логин идёт автоматически. Ручной режим: сразу откроется браузер, вход и подтверждение вы делаете сами."
-  if (optionId === "adm_relogin")
-    return "Обновить токен и профиль браузера. Выберите админа, затем режим: авто (по email/паролю) или ручной (через браузер). Нужно, если токен истёк."
-  if (optionId === "adm_open")
-    return "Открыть сохранённый браузерный профиль админа для ручной проверки. Требуется существующий профиль — сначала выполните логин."
-  if (optionId === "adm_delete")
-    return "Полностью удалить админа: профиль, токены и локальные файлы. Привязанные слоты будут отвязаны, но не удалены."
+  if (optionId === "adm_add") return "Добавить нового админа."
+  if (optionId === "adm_relogin") return "Перелогинить админа."
+  if (optionId === "adm_open") return "Открыть профиль админа."
+  if (optionId === "adm_delete") return "Удалить админа."
 
-  // Слоты
-  if (optionId === "slots_create")
-    return "Запустить полный пайплайн: создание почты, инвайт в workspace, регистрация и сохранение codex-файлов. Нужен админ с активным токеном."
-  if (optionId === "slots_relogin")
-    return "Обновить токены слотов. «Один слот» — выберете конкретный. «Все слоты» — массовый перелогин для всех с сохранённым OpenAI-паролем."
-  if (optionId === "slots_open")
-    return "Открыть браузерный профиль конкретного слота для ручной проверки. Профиль должен существовать — запустите перелогин, если его нет."
-  if (optionId === "slots_delete")
-    return "Удалить слот и все связанные локальные данные: профиль браузера, codex-файл, записи в хранилище."
+  if (optionId === "slots_create") return "Создать новые слоты."
+  if (optionId === "slots_relogin") return "Перелогинить слот или все слоты."
+  if (optionId === "slots_open") return "Открыть профиль слота."
+  if (optionId === "slots_delete") return "Удалить слот."
 
-  // Пикеры и подтверждение
   if (optionId.startsWith("pick_admin:"))
-    return "Выберите админа для выполнения действия. Подробности о выбранном — в блоке контекста справа."
+    return "Выбрать этого админа."
   if (optionId.startsWith("pick_worker:"))
-    return "Выберите слот для выполнения действия. Статус и привязка к админу показаны в контексте."
+    return "Выбрать этот слот."
   if (optionId.startsWith("setting:"))
-    return "Нажмите Enter, чтобы изменить значение. Текущее значение замаскировано для безопасности."
+    return "Изменить значение настройки."
   if (optionId === "confirm_yes")
-    return "Подтвердить удаление. Действие необратимо — данные будут удалены без возможности отката."
+    return "Подтвердить удаление."
   if (optionId === "confirm_no")
-    return "Отменить и вернуться назад. Никакие данные не будут изменены."
+    return "Отменить и вернуться."
 
   return "Нажмите Enter для выполнения."
 }
@@ -190,16 +201,44 @@ export class MainScreen {
   private primaryBox!: OpenTUI.BoxRenderable
   private detailBox!: OpenTUI.BoxRenderable
   private menuBox!: OpenTUI.BoxRenderable
+  private statusBox!: OpenTUI.BoxRenderable
 
   private summaryText!: AnyRenderable
   private primaryText!: AnyRenderable
   private detailText!: ScrollableTextRenderable
   private menuText!: AnyRenderable
   private statusText!: AnyRenderable
+  private layout: LayoutMetrics = {
+    mode: "full",
+    width: 120,
+    height: 32,
+    summaryHeight: 7,
+    primaryHeight: 12,
+    detailHeight: 9,
+    menuHeight: 6,
+    showDetail: true,
+    summaryWidth: 114,
+    primaryWidth: 114,
+    detailWidth: 114,
+    menuWidth: 114,
+    statusWidth: 118,
+    menuMaxVisible: 4,
+    detailLogLimit: 8,
+    showMenuIndicators: true,
+  }
+  private needsDetailClamp = false
+  private needsDetailScrollEnd = false
+  private detailAdjustmentScheduled = false
 
   async start() {
     this.renderer = await createCliRenderer({ exitOnCtrlC: false })
     this.buildUI()
+    this.renderer.on("resize", () => {
+      this.rebuildMenuOptions()
+      this.clampSelection()
+      this.needsDetailClamp = true
+      this.render()
+    })
 
     this.rpc.onEvent((evt) => {
       this.backendOnline = true
@@ -268,7 +307,7 @@ export class MainScreen {
       width: "100%",
       height: "100%",
       flexDirection: "column",
-      justifyContent: "space-between",
+      justifyContent: "flex-start",
       padding: 0,
       backgroundColor: "#020a2b",
     })
@@ -291,7 +330,7 @@ export class MainScreen {
       title: "Быстрый старт",
       border: true,
       borderColor: "#334155",
-      flexGrow: 2,
+      height: 12,
       width: "100%",
       backgroundColor: "#08111f",
       paddingLeft: 1,
@@ -304,7 +343,6 @@ export class MainScreen {
       border: true,
       borderColor: "#334155",
       height: 9,
-      flexGrow: 3,
       width: "100%",
       backgroundColor: "#020617",
       paddingLeft: 1,
@@ -324,7 +362,7 @@ export class MainScreen {
       flexShrink: 0,
     })
 
-    const statusBox = new OpenTUI.BoxRenderable(this.renderer, {
+    this.statusBox = new OpenTUI.BoxRenderable(this.renderer, {
       id: "status_box",
       border: false,
       backgroundColor: "#1f2937",
@@ -361,13 +399,13 @@ export class MainScreen {
     this.primaryBox.add(this.primaryText)
     this.detailBox.add(this.detailText)
     this.menuBox.add(this.menuText)
-    statusBox.add(this.statusText)
+    this.statusBox.add(this.statusText)
 
     root.add(this.summaryBox)
     root.add(this.primaryBox)
     root.add(this.detailBox)
     root.add(this.menuBox)
-    root.add(statusBox)
+    root.add(this.statusBox)
 
     this.renderer.root.add(root)
   }
@@ -404,40 +442,224 @@ export class MainScreen {
 
   private rebuildMenuOptions() {
     this.menuOptions = getMenuOptions(this.menuName, this.state)
-    if (this.selectedIndex >= this.menuOptions.length) {
-      this.selectedIndex = Math.max(0, this.menuOptions.length - 1)
+    this.clampSelection()
+  }
+
+  private getTerminalWidth(): number {
+    return Math.max(20, this.renderer.terminalWidth || process.stdout.columns || 120)
+  }
+
+  private getTerminalHeight(): number {
+    return Math.max(8, this.renderer.terminalHeight || process.stdout.rows || 32)
+  }
+
+  private computeLayoutMetrics(visibleMenuCount: number): LayoutMetrics {
+    const width = this.getTerminalWidth()
+    const height = this.getTerminalHeight()
+    const mode: LayoutMode = width >= 120 && height >= 32
+      ? "full"
+      : width >= 80 && height >= 22
+        ? "compact"
+        : "fallback"
+
+    if (mode === "fallback") {
+      const summaryHeight = height >= 16 ? 5 : 4
+      const statusHeight = 1
+      const bodyHeight = Math.max(4, height - summaryHeight - statusHeight)
+      const primaryFloor = bodyHeight >= 8 ? 4 : 2
+      const maxMenuHeight = Math.max(2, bodyHeight - primaryFloor)
+      const menuFloor = Math.min(maxMenuHeight, bodyHeight >= 8 ? 4 : 2)
+      let menuHeight = clampNumber(Math.max(2, visibleMenuCount) + 2, menuFloor, maxMenuHeight)
+      let primaryHeight = bodyHeight - menuHeight
+
+      if (primaryHeight < primaryFloor && menuHeight > 2) {
+        menuHeight = Math.max(2, menuHeight - (primaryFloor - primaryHeight))
+        primaryHeight = bodyHeight - menuHeight
+      }
+
+      const contentWidth = Math.max(18, width - 6)
+
+      return {
+        mode,
+        width,
+        height,
+        summaryHeight,
+        primaryHeight,
+        detailHeight: 0,
+        menuHeight,
+        showDetail: false,
+        summaryWidth: contentWidth,
+        primaryWidth: contentWidth,
+        detailWidth: contentWidth,
+        menuWidth: contentWidth,
+        statusWidth: Math.max(18, width - 2),
+        menuMaxVisible: Math.max(1, menuHeight - 2),
+        detailLogLimit: 4,
+        showMenuIndicators: false,
+      }
+    }
+
+    const summaryHeight = mode === "full" ? 7 : 6
+    const showDetail = true
+    const detailMinHeight = mode === "full" ? 6 : 4
+    const detailMaxHeight = mode === "full" ? 12 : 8
+    const primaryMinHeight = mode === "full" ? 8 : 6
+    const menuMinVisible = mode === "full" ? 4 : 3
+    const menuMaxVisible = mode === "full" ? 8 : 6
+    const statusHeight = 1
+    const bodyHeight = Math.max(6, height - summaryHeight - statusHeight)
+    const menuFloor = menuMinVisible + 2
+    const menuDesiredHeight = clampNumber(Math.max(menuMinVisible, visibleMenuCount) + 2, menuFloor, menuMaxVisible + 2)
+    const maxMenuHeight = Math.max(menuFloor, bodyHeight - primaryMinHeight - detailMinHeight)
+    const menuHeight = clampNumber(menuDesiredHeight, menuFloor, maxMenuHeight)
+    const baseBody = primaryMinHeight + detailMinHeight + menuHeight
+    const extra = Math.max(0, bodyHeight - baseBody)
+    const detailExtra = Math.min(detailMaxHeight - detailMinHeight, extra)
+    const detailHeight = detailMinHeight + detailExtra
+    const primaryHeight = primaryMinHeight + (extra - detailExtra)
+
+    const contentWidth = Math.max(18, width - 6)
+
+    return {
+      mode,
+      width,
+      height,
+      summaryHeight,
+      primaryHeight,
+      detailHeight,
+      menuHeight,
+      showDetail,
+      summaryWidth: contentWidth,
+      primaryWidth: contentWidth,
+      detailWidth: contentWidth,
+      menuWidth: contentWidth,
+      statusWidth: Math.max(18, width - 2),
+      menuMaxVisible: Math.max(2, menuHeight - 2),
+      detailLogLimit: mode === "full" ? 8 : 5,
+      showMenuIndicators: true,
     }
   }
 
-  private setStatus() {
+  private applyLayout(metrics: LayoutMetrics) {
+    this.summaryBox.height = metrics.summaryHeight
+    this.primaryBox.height = metrics.primaryHeight
+    this.detailBox.visible = metrics.showDetail
+    if (metrics.showDetail) {
+      this.detailBox.height = metrics.detailHeight
+    }
+    this.menuBox.height = metrics.menuHeight
+    this.statusBox.height = 1
+  }
+
+  private clampSelection() {
+    this.selectedIndex = this.clampIndex(this.selectedIndex, this.menuOptions.length)
+    if (this.prompt.mode === "select") {
+      this.prompt.selectedIndex = this.clampIndex(this.prompt.selectedIndex, this.prompt.options.length)
+    }
+  }
+
+  private clampIndex(index: number, total: number): number {
+    if (total <= 0) return 0
+    return clampNumber(index, 0, total - 1)
+  }
+
+  private isDetailPinnedToBottom(): boolean {
+    const maxScroll = typeof this.detailText.maxScrollY === "number" ? this.detailText.maxScrollY : 0
+    const current = typeof this.detailText.scrollY === "number" ? this.detailText.scrollY : 0
+    return maxScroll <= 0 || current >= maxScroll - 1
+  }
+
+  private clampDetailScroll() {
+    const maxScroll = typeof this.detailText.maxScrollY === "number" ? this.detailText.maxScrollY : 0
+    const current = typeof this.detailText.scrollY === "number" ? this.detailText.scrollY : 0
+    this.detailText.scrollY = clampNumber(current, 0, Math.max(0, maxScroll))
+  }
+
+  private scheduleDetailAdjustment() {
+    if (!this.layout.showDetail) {
+      this.needsDetailClamp = false
+      this.needsDetailScrollEnd = false
+      return
+    }
+    if (this.detailAdjustmentScheduled) return
+
+    this.detailAdjustmentScheduled = true
+    void this.renderer.idle().then(() => {
+      this.detailAdjustmentScheduled = false
+      if (!this.layout.showDetail) {
+        this.needsDetailClamp = false
+        this.needsDetailScrollEnd = false
+        return
+      }
+
+      const shouldScrollToEnd = this.needsDetailScrollEnd
+      const shouldClamp = this.needsDetailClamp
+      this.needsDetailScrollEnd = false
+      this.needsDetailClamp = false
+
+      const before = typeof this.detailText.scrollY === "number" ? this.detailText.scrollY : 0
+      if (shouldScrollToEnd) {
+        this.scrollDetailToEnd()
+      } else if (shouldClamp) {
+        this.clampDetailScroll()
+      }
+
+      const after = typeof this.detailText.scrollY === "number" ? this.detailText.scrollY : 0
+      if (after !== before) {
+        this.renderer.requestRender()
+      }
+
+      if (this.needsDetailClamp || this.needsDetailScrollEnd) {
+        this.scheduleDetailAdjustment()
+      }
+    })
+  }
+
+  private getStatusHint(metrics: LayoutMetrics): string {
+    if (metrics.mode === "full") {
+      return getHint(this.menuName, this.menuCtx)
+    }
+    if (this.menuName === "main") {
+      return "↑↓/1-4 • Enter • r • q"
+    }
+    if (this.menuName === "confirm") {
+      return "Enter • Esc"
+    }
+    return "↑↓/1-9 • Enter • Esc • r"
+  }
+
+  private setStatus(metrics: LayoutMetrics) {
     if (this.prompt.active) {
       if (this.prompt.mode === "select") {
         const option = this.prompt.options[this.prompt.selectedIndex]
         const label = option ? option.label : "нет вариантов"
-        const hint = option?.hint ? ` • ${option.hint}` : ""
+        const hint = option?.hint && metrics.mode === "full" ? ` • ${option.hint}` : ""
+        const content = truncateText(` ${this.prompt.question}: ${label}${hint} `, metrics.statusWidth)
         setRenderableText(
           this.statusText,
-          t`${bg("#111827")(fg("#e5e7eb")(bold(` ${this.prompt.question}: ${label}${hint} `)))}`,
+          t`${bg("#111827")(fg("#e5e7eb")(bold(content)))}`,
         )
         return
       }
       const typed = this.prompt.hidden ? "*".repeat(this.prompt.value.length) : this.prompt.value
       const value = typed || "_"
+      const content = truncateText(` ${this.prompt.question}: ${value} `, metrics.statusWidth)
       setRenderableText(
         this.statusText,
-        t`${bg("#111827")(fg("#e5e7eb")(bold(` ${this.prompt.question}: ${value} `)))}`,
+        t`${bg("#111827")(fg("#e5e7eb")(bold(content)))}`,
       )
       return
     }
 
-    const hint = getHint(this.menuName, this.menuCtx)
+    const hint = this.getStatusHint(metrics)
+    const hintText = truncateText(` ${hint} `, metrics.mode === "full" ? Math.max(18, metrics.statusWidth - 34) : Math.max(14, metrics.statusWidth - 24))
     const backendSeg = this.backendOnline
-      ? bg("#14532d")(fg("#dcfce7")(" backend: online "))
-      : bg("#7f1d1d")(fg("#fee2e2")(" backend: offline "))
-    const hintSeg = bg("#334155")(fg("#e2e8f0")(` ${hint} `))
+      ? bg("#14532d")(fg("#dcfce7")(metrics.mode === "fallback" ? " backend ok " : " backend: online "))
+      : bg("#7f1d1d")(fg("#fee2e2")(metrics.mode === "fallback" ? " backend off " : " backend: offline "))
+    const hintSeg = bg("#334155")(fg("#e2e8f0")(hintText))
 
     if (this.busy) {
-      const title = this.busyTitle || "Выполняется..."
+      const title = truncateText(this.busyTitle || "Выполняется...", metrics.mode === "fallback" ? 18 : 28)
       const busySeg = bg("#7c2d12")(fg("#ffedd5")(bold(` ● ${title} `)))
       setRenderableText(this.statusText, t`${busySeg}${hintSeg}${backendSeg}`)
     } else {
@@ -447,18 +669,24 @@ export class MainScreen {
   }
 
   private pushLog(message: string) {
+    const shouldStickToBottom = this.isDetailPinnedToBottom()
     this.logs.push(`[${timeStamp()}] ${message}`)
-    this.scrollDetailToEnd()
+    if (shouldStickToBottom) {
+      this.needsDetailScrollEnd = true
+    } else {
+      this.needsDetailClamp = true
+    }
   }
 
   private scrollDetailToEnd() {
     if (typeof this.detailText.maxScrollY === "number") {
-      this.detailText.scrollY = this.detailText.maxScrollY
+      this.detailText.scrollY = Math.max(0, this.detailText.maxScrollY)
     }
   }
 
   private render() {
     this.rebuildMenuOptions()
+    this.clampSelection()
     const table = getTable(this.menuName, this.state, this.menuCtx)
     const promptMenuOptions: MenuOption[] = this.prompt.mode === "select"
       ? this.prompt.options.map((option) => ({
@@ -474,36 +702,49 @@ export class MainScreen {
     const visibleMenuIndex = this.prompt.active && this.prompt.mode === "select"
       ? this.prompt.selectedIndex
       : this.selectedIndex
+    const metrics = this.computeLayoutMetrics(visibleMenuOptions.length)
+    this.layout = metrics
+    this.applyLayout(metrics)
 
     this.summaryBox.title = this.menuName === "main" ? "izTeamSlots" : `Раздел: ${this.getScreenTitle()}`
-    this.primaryBox.title = this.menuName === "main" ? "Быстрый старт" : this.getPrimaryTitle()
+    this.primaryBox.title = metrics.mode === "fallback"
+      ? "Сжатый режим"
+      : this.menuName === "main" ? "Быстрый старт" : this.getPrimaryTitle()
     this.detailBox.title = this.prompt.active && this.prompt.mode === "select"
       ? "Выбор"
       : this.menuName === "main" ? "События и подсказки" : "Контекст"
     this.menuBox.title = this.prompt.active && this.prompt.mode === "select" ? "Варианты" : "Действия"
-    this.menuBox.height = Math.max(6, Math.min(10, visibleMenuOptions.length + 2))
 
-    setRenderableText(this.summaryText, this.buildSummaryPanel())
+    setRenderableText(this.summaryText, this.buildSummaryPanel(metrics))
 
-    if (this.menuName === "main") {
-      setRenderableText(this.primaryText, this.buildMainPanel())
+    if (metrics.mode === "fallback") {
+      setRenderableText(this.primaryText, this.buildFallbackPanel(metrics))
+    } else if (this.menuName === "main") {
+      setRenderableText(this.primaryText, this.buildMainPanel(metrics))
     } else if (table.rows.length > 0) {
       setRenderableText(
         this.primaryText,
-        formatTable(table.headers, table.rows, Math.max(72, process.stdout.columns || 120)),
+        formatTable(table.headers, table.rows, this.getTableFormatOptions(metrics)),
       )
     } else {
-      setRenderableText(this.primaryText, this.buildEmptyStatePanel())
+      setRenderableText(this.primaryText, this.buildEmptyStatePanel(metrics))
     }
 
-    setRenderableText(this.detailText, this.buildDetailPanel())
-    const menuMaxVisible = Math.max(4, (this.menuBox.height ?? 8) - 2)
+    setRenderableText(this.detailText, metrics.showDetail ? this.buildDetailPanel(metrics) : t``)
     setRenderableText(
       this.menuText,
-      formatMenu(visibleMenuOptions, visibleMenuIndex, Math.max(48, (process.stdout.columns || 120) - 6), menuMaxVisible),
+      formatMenu(visibleMenuOptions, visibleMenuIndex, {
+        maxWidth: metrics.menuWidth,
+        maxVisible: metrics.menuMaxVisible,
+        density: metrics.mode,
+        showIndicators: metrics.showMenuIndicators,
+      }),
     )
-    this.setStatus()
+    this.setStatus(metrics)
     this.renderer.requestRender()
+    if (this.needsDetailClamp || this.needsDetailScrollEnd) {
+      this.scheduleDetailAdjustment()
+    }
   }
 
   private move(delta: number) {
@@ -531,62 +772,167 @@ export class MainScreen {
     return this.getScreenTitle()
   }
 
-  private buildSummaryPanel(): StyledText {
-    const connectionLine = this.backendOnline
-      ? t`${fg("#4ade80")("Подключение активно")}`
-      : t`${fg("#fca5a5")("Подключение потеряно")}`
-    const contextLine = this.backendOnline
-      ? t`${fg("#94a3b8")("Экран")} ${fg("#e2e8f0")(this.getScreenTitle())}`
-      : t`${fg("#94a3b8")("Причина")} ${fg("#fca5a5")(this.getShortConnectionError())}`
+  private getTableFormatOptions(metrics: LayoutMetrics) {
+    const density: "full" | "compact" = metrics.mode === "full" ? "full" : "compact"
+    const base = {
+      maxWidth: metrics.primaryWidth,
+      density,
+      emptyMessage: "Нет данных для отображения.",
+    }
 
-    return joinStyledLines([
-      t`${fg("#f8fafc")(bold(HERO_LOGO))}`,
-      contextLine,
-      connectionLine,
-      formatDashboard(getDashboard(this.state)),
-    ])
+    if (this.menuName === "admins" || this.menuName === "pick_admin") {
+      return {
+        ...base,
+        columns: [
+          { required: true, minWidth: 18 },
+          { required: true, minWidth: 8, priority: 1 },
+          { minWidth: 7, priority: 2 },
+          { minWidth: 6, priority: 3 },
+          { minWidth: 10, priority: 4 },
+        ],
+        compactColumns: [0, 1],
+      }
+    }
+
+    if (this.menuName === "slots" || this.menuName === "pick_worker") {
+      return {
+        ...base,
+        columns: [
+          { required: true, minWidth: 18 },
+          { required: true, minWidth: 8, priority: 1 },
+          { minWidth: 8, priority: 2 },
+          { minWidth: 10, priority: 3 },
+          { minWidth: 6, priority: 4 },
+        ],
+        compactColumns: [0, 1],
+      }
+    }
+
+    return base
   }
 
-  private buildMainPanel(): StyledText {
+  private buildSummaryPanel(metrics: LayoutMetrics): StyledText {
+    if (metrics.mode === "fallback") {
+      if (metrics.summaryHeight <= 4) {
+        return joinStyledLines([
+          t`${fg("#f8fafc")(bold("izTeamSlots"))}`,
+          this.backendOnline
+            ? t`${fg("#94a3b8")(truncateText(`Размер ${metrics.width}x${metrics.height} • минимум 80x22`, metrics.summaryWidth))}`
+            : t`${fg("#fca5a5")(truncateText(this.getShortConnectionError(), metrics.summaryWidth))}`,
+        ])
+      }
+
+      return joinStyledLines([
+        t`${fg("#f8fafc")(bold("izTeamSlots"))}`,
+        t`${fg("#94a3b8")(truncateText(`Размер ${metrics.width}x${metrics.height} • минимум 80x22`, metrics.summaryWidth))}`,
+        this.backendOnline
+          ? formatDashboard(getDashboard(this.state), { maxWidth: metrics.summaryWidth, density: "fallback" })
+          : t`${fg("#fca5a5")(truncateText(this.getShortConnectionError(), metrics.summaryWidth))}`,
+      ])
+    }
+
+    const lines: StyledText[] = [
+      t`${fg("#f8fafc")(bold(`izTeamSlots • ${this.getScreenTitle()}`))}`,
+    ]
+
+    if (metrics.mode === "full") {
+      lines.push(t`${fg("#64748b")(truncateText("Локальный центр управления слотами", metrics.summaryWidth))}`)
+    }
+
+    if (this.backendOnline) {
+      lines.push(t`${fg("#4ade80")(truncateText("Подключение активно", metrics.summaryWidth))}`)
+    } else {
+      lines.push(t`${fg("#fca5a5")(truncateText(`Offline: ${this.getShortConnectionError()}`, metrics.summaryWidth))}`)
+    }
+
+    lines.push(formatDashboard(getDashboard(this.state), {
+      maxWidth: metrics.summaryWidth,
+      density: metrics.mode,
+    }))
+
+    return joinStyledLines(lines)
+  }
+
+  private buildMainPanel(metrics: LayoutMetrics): StyledText {
     if (!this.backendOnline) {
-      return this.buildRecoveryPanel()
+      return this.buildRecoveryPanel(metrics)
     }
 
     const adminsReady = this.state.admins.filter((admin) => hasFlag(admin, "has_access_token")).length
     const workersReady = this.state.workers.filter((worker) => hasFlag(worker, "has_access_token")).length
+    const stepLimit = metrics.mode === "full" ? 4 : 3
     const lines: StyledText[] = [
       t`${fg("#f8fafc")(bold("Что делать дальше"))}`,
     ]
 
-    for (const step of this.getRecommendedSteps()) {
-      lines.push(t`${fg("#94a3b8")("•")} ${fg("#e2e8f0")(step)}`)
+    for (const step of this.getRecommendedSteps().slice(0, stepLimit)) {
+      lines.push(t`${fg("#94a3b8")("•")} ${fg("#e2e8f0")(truncateText(step, metrics.primaryWidth))}`)
     }
 
     lines.push(t`${fg("#475569")(" ")}`)
     lines.push(
-      t`${fg("#94a3b8")("Готовность")} ${fg("#e2e8f0")(`${adminsReady}/${this.state.admins.length || 0} админов, ${workersReady}/${this.state.workers.length || 0} слотов`)}`
+      t`${fg("#94a3b8")("Готовность")} ${fg("#e2e8f0")(truncateText(`${adminsReady}/${this.state.admins.length || 0} админов, ${workersReady}/${this.state.workers.length || 0} слотов`, metrics.primaryWidth - 12))}`,
     )
+
+    const hint = metrics.mode === "full"
+      ? "Стрелки и цифры работают и в меню, и в режимах выбора. Enter подтверждает, r обновляет состояние."
+      : "Меню снизу остаётся активным во время ресайза. Enter подтверждает, Esc возвращает назад."
     lines.push(
-      t`${fg("#94a3b8")("Подсказка")} ${fg("#cbd5e1")("Стрелки и цифры работают и в меню, и в режимах выбора. Enter подтверждает, r обновляет состояние.")}`
+      t`${fg("#94a3b8")("Подсказка")} ${fg("#cbd5e1")(truncateText(hint, metrics.primaryWidth - 10))}`,
     )
 
     return joinStyledLines(lines)
   }
 
-  private buildRecoveryPanel(): StyledText {
+  private buildFallbackPanel(metrics: LayoutMetrics): StyledText {
+    const lines: StyledText[] = [
+      t`${fg("#f8fafc")(bold("Окно слишком маленькое"))}`,
+      t`${fg("#94a3b8")(truncateText(`Текущий размер: ${metrics.width}x${metrics.height}. Рекомендуемый минимум: 80x22.`, metrics.primaryWidth))}`,
+    ]
+
+    if (this.busy) {
+      lines.push(t`${fg("#fdba74")(truncateText(`Идёт задача: ${this.busyTitle || "операция"}`, metrics.primaryWidth))}`)
+    } else if (this.backendOnline) {
+      lines.push(t`${fg("#4ade80")("Backend активен. Меню снизу остаётся рабочим.")}`)
+    } else {
+      lines.push(t`${fg("#fca5a5")(truncateText(`Backend offline: ${this.getShortConnectionError()}`, metrics.primaryWidth))}`)
+    }
+
+    if (this.prompt.active && this.prompt.mode === "input") {
+      const rawValue = this.prompt.hidden ? "*".repeat(this.prompt.value.length) : this.prompt.value || "_"
+      lines.push(t`${fg("#93c5fd")(truncateText(`${this.prompt.question}: ${rawValue}`, metrics.primaryWidth))}`)
+    } else if (this.prompt.active && this.prompt.mode === "select") {
+      const option = this.prompt.options[this.prompt.selectedIndex]
+      const label = option ? option.label : "нет вариантов"
+      lines.push(t`${fg("#93c5fd")(truncateText(`${this.prompt.question}: ${label}`, metrics.primaryWidth))}`)
+      if (option?.hint) {
+        lines.push(t`${fg("#64748b")(truncateText(option.hint, metrics.primaryWidth))}`)
+      }
+    } else {
+      lines.push(t`${fg("#cbd5e1")(truncateText(`Раздел: ${this.getScreenTitle()}. Для полной таблицы увеличьте окно.`, metrics.primaryWidth))}`)
+    }
+
+    if (metrics.primaryHeight > 6) {
+      lines.push(t`${fg("#64748b")(truncateText(`Клавиши: ${this.getStatusHint(metrics)}`, metrics.primaryWidth))}`)
+    }
+
+    return joinStyledLines(lines)
+  }
+
+  private buildRecoveryPanel(metrics: LayoutMetrics): StyledText {
     const lines: StyledText[] = [
       t`${fg("#f8fafc")(bold("Backend недоступен"))}`,
-      t`${fg("#fca5a5")(this.getShortConnectionError())}`,
+      t`${fg("#fca5a5")(truncateText(this.getShortConnectionError(), metrics.primaryWidth))}`,
       t`${fg("#94a3b8")("Проверьте окружение и повторите обновление клавишей r.")}`,
     ]
 
     const error = this.connectionError.toLowerCase()
     if (error.includes("no module named 'requests'")) {
-      lines.push(t`${fg("#93c5fd")("Подсказка: установите Python-пакет requests.")}`)
+      lines.push(t`${fg("#93c5fd")(truncateText("Подсказка: установите Python-пакет requests.", metrics.primaryWidth))}`)
     } else if (error.includes("no module named 'seleniumbase'")) {
-      lines.push(t`${fg("#93c5fd")("Подсказка: установите seleniumbase.")}`)
+      lines.push(t`${fg("#93c5fd")(truncateText("Подсказка: установите seleniumbase.", metrics.primaryWidth))}`)
     } else {
-      lines.push(t`${fg("#93c5fd")("Подсказка: проверьте python-зависимости и запуск backend модуля.")}`)
+      lines.push(t`${fg("#93c5fd")(truncateText("Подсказка: проверьте python-зависимости и запуск backend модуля.", metrics.primaryWidth))}`)
     }
 
     return joinStyledLines(lines)
@@ -635,9 +981,9 @@ export class MainScreen {
     ]
   }
 
-  private buildDetailPanel(): StyledText {
+  private buildDetailPanel(metrics: LayoutMetrics): StyledText {
     if (!this.backendOnline) {
-      return this.buildRecoveryPanel()
+      return this.buildRecoveryPanel(metrics)
     }
 
     if (this.prompt.active && this.prompt.mode === "select") {
@@ -646,12 +992,12 @@ export class MainScreen {
         t`${fg("#f8fafc")(bold(this.prompt.question))}`,
       ]
       if (option) {
-        lines.push(t`${fg("#93c5fd")("•")} ${fg("#e2e8f0")(option.label)}`)
+        lines.push(t`${fg("#93c5fd")("•")} ${fg("#e2e8f0")(truncateText(option.label, metrics.detailWidth - 4))}`)
         if (option.hint) {
-          lines.push(t`${fg("#94a3b8")(option.hint)}`)
+          lines.push(t`${fg("#94a3b8")(truncateText(option.hint, metrics.detailWidth))}`)
         }
       }
-      lines.push(t`${fg("#64748b")("Enter выбрать • Esc отмена • Стрелки перемещают курсор")}`)
+      lines.push(t`${fg("#64748b")(metrics.mode === "full" ? "Enter выбрать • Esc отмена • Стрелки перемещают курсор" : "Enter выбрать • Esc отмена")}`)
       return joinStyledLines(lines)
     }
 
@@ -661,20 +1007,21 @@ export class MainScreen {
 
     if (selected) {
       const badge = extra?.badge ? ` • ${extra.badge}` : ""
-      lines.push(t`${fg("#f8fafc")(bold(`${selected.label}${badge}`))}`)
-      lines.push(t`${fg("#94a3b8")(getMenuOptionDescription(selected))}`)
+      lines.push(t`${fg("#f8fafc")(bold(truncateText(`${selected.label}${badge}`, metrics.detailWidth)))}`)
+      lines.push(t`${fg("#94a3b8")(truncateText(getMenuOptionDescription(selected), metrics.detailWidth))}`)
     }
 
-    for (const note of this.getContextNotes()) {
-      lines.push(t`${fg("#93c5fd")("•")} ${fg("#cbd5e1")(note)}`)
+    const noteLimit = metrics.mode === "full" ? 3 : 1
+    for (const note of this.getContextNotes().slice(0, noteLimit)) {
+      lines.push(t`${fg("#93c5fd")("•")} ${fg("#cbd5e1")(truncateText(note, metrics.detailWidth - 4))}`)
     }
 
-    const recentLogs = this.logs.slice(-15)
+    const recentLogs = this.logs.slice(-metrics.detailLogLimit)
     if (recentLogs.length > 0) {
       lines.push(t`${fg("#475569")(" ")}`)
       lines.push(t`${fg("#f8fafc")(bold("Последние события"))}`)
       for (const log of recentLogs) {
-        lines.push(t`${fg("#94a3b8")(log)}`)
+        lines.push(t`${fg("#94a3b8")(truncateText(log, metrics.detailWidth))}`)
       }
     } else {
       lines.push(t`${fg("#64748b")("Событий пока нет.")}`)
@@ -683,17 +1030,17 @@ export class MainScreen {
     return joinStyledLines(lines)
   }
 
-  private buildEmptyStatePanel(): StyledText {
+  private buildEmptyStatePanel(metrics: LayoutMetrics): StyledText {
     const lines: StyledText[] = [t`${fg("#f8fafc")(bold("Пока пусто"))}`]
 
     if (this.menuName === "admins") {
-      lines.push(t`${fg("#cbd5e1")("Сначала добавьте первого админа, затем выполните логин.")}`)
+      lines.push(t`${fg("#cbd5e1")(truncateText("Сначала добавьте первого админа, затем выполните логин.", metrics.primaryWidth))}`)
     } else if (this.menuName === "slots") {
-      lines.push(t`${fg("#cbd5e1")("Слоты появятся после запуска пайплайна от выбранного админа.")}`)
+      lines.push(t`${fg("#cbd5e1")(truncateText("Слоты появятся после запуска пайплайна от выбранного админа.", metrics.primaryWidth))}`)
     } else if (this.menuName === "pick_admin" || this.menuName === "pick_worker") {
-      lines.push(t`${fg("#cbd5e1")("Нет доступных элементов для выбора. Вернитесь назад и подготовьте данные.")}`)
+      lines.push(t`${fg("#cbd5e1")(truncateText("Нет доступных элементов для выбора. Вернитесь назад и подготовьте данные.", metrics.primaryWidth))}`)
     } else {
-      lines.push(t`${fg("#cbd5e1")("Добавьте данные или вернитесь на главный экран.")}`)
+      lines.push(t`${fg("#cbd5e1")(truncateText("Добавьте данные или вернитесь на главный экран.", metrics.primaryWidth))}`)
     }
 
     return joinStyledLines(lines)
@@ -819,8 +1166,8 @@ export class MainScreen {
 
   private async promptLoginMode(): Promise<"auto" | "manual" | null> {
     const value = await this.promptSelect("Режим входа", [
-      { value: "auto", label: "Авто", hint: "Email и пароль вводятся в TUI, дальше логин идёт автоматически." },
-      { value: "manual", label: "Вручную", hint: "Браузер откроется сразу, вход и код подтверждения вы вводите сами." },
+      { value: "auto", label: "Авто", hint: "Логин по данным из TUI." },
+      { value: "manual", label: "Вручную", hint: "Логин вручную в браузере." },
     ])
     if (value === "auto" || value === "manual") return value
     return null
@@ -833,8 +1180,8 @@ export class MainScreen {
 
   private async promptSlotReloginScope(): Promise<"one" | "all" | null> {
     const value = await this.promptSelect("Перелогин слотов", [
-      { value: "one", label: "Один слот", hint: "Сначала выберете конкретный слот, потом запустится перелогин." },
-      { value: "all", label: "Все слоты", hint: "Запустить перелогин для всех слотов с сохранённым паролем." },
+      { value: "one", label: "Один слот", hint: "Перелогинить один слот." },
+      { value: "all", label: "Все слоты", hint: "Перелогинить все готовые слоты." },
     ])
     if (value === "one" || value === "all") return value
     return null

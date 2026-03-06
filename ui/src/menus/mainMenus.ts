@@ -3,28 +3,28 @@ import type { AppState, DashboardData, MenuContext, MenuName, MenuOption, Worker
 export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[] {
   if (menuName === "main") {
     return [
-      { id: "menu_admins", label: "Админы", hint: "Доступы, токены, браузерные профили" },
-      { id: "menu_slots", label: "Слоты", hint: "Создание, перелогин и обслуживание" },
-      { id: "menu_settings", label: "Настройки", hint: "API-ключи и провайдеры почты" },
-      { id: "menu_exit", label: "Выход", hint: "Закрыть приложение" },
+      { id: "menu_admins", label: "Админы", hint: "Добавить, войти, открыть, удалить", description: "Перейти к действиям с администраторами." },
+      { id: "menu_slots", label: "Слоты", hint: "Создать, перелогинить, открыть, удалить", description: "Перейти к действиям со слотами." },
+      { id: "menu_settings", label: "Настройки", hint: "Почта, ключи, провайдер", description: "Изменить рабочие настройки." },
+      { id: "menu_exit", label: "Выход", hint: "Закрыть TUI", description: "Завершить работу приложения." },
     ]
   }
 
   if (menuName === "admins") {
     return [
-      { id: "adm_add", label: "Добавить админа", hint: "Создать профиль и выбрать режим входа" },
-      { id: "adm_relogin", label: "Перелогинить", hint: "Выбрать админа и режим: авто или вручную" },
-      { id: "adm_open", label: "Открыть браузер", hint: "Запустить профиль для ручной проверки" },
-      { id: "adm_delete", label: "Удалить", hint: "Удалить админа и связанные данные", destructive: true },
+      { id: "adm_add", label: "Добавить админа", hint: "Новый админ", description: "Добавить админа и выбрать способ входа." },
+      { id: "adm_relogin", label: "Перелогинить", hint: "Обновить доступ", description: "Перелогинить выбранного админа." },
+      { id: "adm_open", label: "Открыть браузер", hint: "Открыть профиль", description: "Открыть браузерный профиль админа." },
+      { id: "adm_delete", label: "Удалить", hint: "Удалить данные", description: "Удалить админа и его локальные файлы.", destructive: true },
     ]
   }
 
   if (menuName === "slots") {
     return [
-      { id: "slots_create", label: "Создать слоты", hint: "Запустить пайплайн регистрации через админа" },
-      { id: "slots_relogin", label: "Перелогинить", hint: "Выбрать: один слот или все сразу" },
-      { id: "slots_open", label: "Открыть браузер", hint: "Проверить конкретный слот вручную" },
-      { id: "slots_delete", label: "Удалить слот", hint: "Очистить аккаунт и локальные данные", destructive: true },
+      { id: "slots_create", label: "Создать слоты", hint: "Новые слоты", description: "Запустить создание слотов под выбранным админом." },
+      { id: "slots_relogin", label: "Перелогинить", hint: "Обновить доступ", description: "Перелогинить один слот или все сразу." },
+      { id: "slots_open", label: "Открыть браузер", hint: "Открыть профиль", description: "Открыть браузерный профиль слота." },
+      { id: "slots_delete", label: "Удалить слот", hint: "Удалить данные", description: "Удалить слот и его локальные файлы.", destructive: true },
     ]
   }
 
@@ -32,7 +32,8 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
     return state.admins.map((a) => ({
       id: `pick_admin:${a.email}`,
       label: a.email,
-      hint: a.has_access_token ? "Токен готов" : "Нужен повторный вход",
+      hint: a.has_access_token ? "Готов" : "Нужно войти",
+      description: `Выбрать админа ${a.email}.`,
     }))
   }
 
@@ -40,7 +41,8 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
     return state.workers.map((w) => ({
       id: `pick_worker:${w.email}`,
       label: w.email,
-      hint: `Статус: ${humanizeWorkerStatus(w.status)}`,
+      hint: humanizeWorkerStatus(w.status),
+      description: `Выбрать слот ${w.email}.`,
     }))
   }
 
@@ -50,14 +52,15 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
         id: `setting:${s.key}`,
         label: s.label,
         hint: s.masked || "не задан",
+        description: `Изменить значение: ${s.label}.`,
       })),
     ]
   }
 
   if (menuName === "confirm") {
     return [
-      { id: "confirm_yes", label: "Да, удалить", hint: "Подтвердить необратимое действие", destructive: true },
-      { id: "confirm_no", label: "Отмена", hint: "Вернуться без изменений" },
+      { id: "confirm_yes", label: "Да, удалить", hint: "Подтвердить", description: "Подтвердить удаление.", destructive: true },
+      { id: "confirm_no", label: "Отмена", hint: "Назад", description: "Отменить действие и вернуться." },
     ]
   }
 

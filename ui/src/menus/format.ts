@@ -1,8 +1,51 @@
 import { StyledText, bg, bold, fg, stringToStyledText, t } from "@opentui/core"
 import type { DashboardData, MenuOption } from "./types"
 
+export type LayoutDensity = "full" | "compact" | "fallback"
+
+type TableColumnPolicy = {
+  minWidth?: number
+  priority?: number
+  required?: boolean
+}
+
+type TableLayout = {
+  indices: number[]
+  widths: number[]
+  fits: boolean
+}
+
+export type TableFormatOptions = {
+  maxWidth?: number
+  density?: LayoutDensity
+  emptyMessage?: string
+  columns?: TableColumnPolicy[]
+  compactColumns?: number[]
+}
+
+type ResolvedTableFormatOptions = {
+  maxWidth: number
+  density: LayoutDensity
+  emptyMessage: string
+  columns: TableColumnPolicy[]
+  compactColumns: number[]
+}
+
+export type MenuFormatOptions = {
+  maxWidth?: number
+  maxVisible?: number
+  density?: LayoutDensity
+  showIndicators?: boolean
+}
+
+export type DashboardFormatOptions = {
+  maxWidth?: number
+  density?: LayoutDensity
+}
+
 function truncate(value: string, width: number): string {
-  if (width <= 1) return value.slice(0, width)
+  if (width <= 0) return ""
+  if (width === 1) return value.slice(0, 1)
   if (value.length <= width) return value
   return `${value.slice(0, width - 1)}…`
 }
@@ -13,147 +56,217 @@ function pad(value: string, width: number): string {
   return v + " ".repeat(width - v.length)
 }
 
-export function formatTable(
+function totalTableWidth(widths: number[]): number {
+  if (widths.length === 0) return 0
+  return widths.reduce((acc, value) => acc + value, 0) + (widths.length - 1) * 3
+}
+
+function buildWidths(
   headers: string[],
   rows: string[][],
-  maxWidth = 120,
-  emptyMessage = "Нет данных для отображения.",
-): StyledText {
-  const allRows = [headers, ...rows]
-  if (allRows.length === 0) return stringToStyledText("")
+  indices: number[],
+  policies: TableColumnPolicy[],
+  minCol: number,
+  maxCol: number,
+): number[] {
+  return indices.map((columnIndex) => {
+    let width = headers[columnIndex]?.length ?? 0
+    for (const row of rows) {
+      width = Math.max(width, (row[columnIndex] ?? "").length)
+    }
+    const minWidth = Math.max(4, policies[columnIndex]?.minWidth ?? minCol)
+    return Math.max(minWidth, Math.min(width, maxCol))
+  })
+}
 
-  const cols = headers.length
-  const widths = new Array(cols).fill(0)
-  for (const row of allRows) {
-    for (let i = 0; i < cols; i++) {
-      const cell = row[i] ?? ""
-      widths[i] = Math.max(widths[i], cell.length)
+function shrinkWidths(widths: number[], indices: number[], policies: TableColumnPolicy[], maxWidth: number, minCol: number) {
+  while (totalTableWidth(widths) > maxWidth) {
+    let candidate = -1
+    for (let i = 0; i < widths.length; i++) {
+      const columnIndex = indices[i]
+      const minWidth = Math.max(4, policies[columnIndex]?.minWidth ?? minCol)
+      if (widths[i] <= minWidth) continue
+      if (candidate === -1 || widths[i] > widths[candidate]) {
+        candidate = i
+      }
+    }
+
+    if (candidate === -1) break
+    widths[candidate] -= 1
+  }
+}
+
+function buildTableLayout(
+  headers: string[],
+  rows: string[][],
+  options: ResolvedTableFormatOptions,
+): TableLayout {
+  const policies = headers.map((_, index) => options.columns?.[index] ?? {})
+  const minCol = options.density === "full" ? 8 : 6
+  const maxCol = options.density === "full" ? 48 : 36
+  let indices = headers.map((_, index) => index)
+  let widths = buildWidths(headers, rows, indices, policies, minCol, maxCol)
+  shrinkWidths(widths, indices, policies, options.maxWidth, minCol)
+
+  if (totalTableWidth(widths) > options.maxWidth) {
+    const removable = indices
+      .filter((index) => !policies[index]?.required)
+      .sort((left, right) => (policies[right]?.priority ?? 0) - (policies[left]?.priority ?? 0))
+
+    for (const columnIndex of removable) {
+      if (indices.length <= 2) break
+      indices = indices.filter((value) => value !== columnIndex)
+      widths = buildWidths(headers, rows, indices, policies, minCol, maxCol)
+      shrinkWidths(widths, indices, policies, options.maxWidth, minCol)
+      if (totalTableWidth(widths) <= options.maxWidth) {
+        return { indices, widths, fits: true }
+      }
     }
   }
 
-  const minCol = 8
-  for (let i = 0; i < cols; i++) widths[i] = Math.max(minCol, Math.min(widths[i], 48))
+  if (totalTableWidth(widths) > options.maxWidth && options.compactColumns.length > 0) {
+    const compactIndices = options.compactColumns
+      .filter((index, position, all) => index >= 0 && index < headers.length && all.indexOf(index) === position)
+      .slice(0, 2)
 
-  const separatorWidth = (cols - 1) * 3
-  const total = widths.reduce((a: number, b: number) => a + b, 0) + separatorWidth
-  if (total > maxWidth) {
-    const overflow = total - maxWidth
-    const perColCut = Math.ceil(overflow / cols)
-    for (let i = 0; i < cols; i++) widths[i] = Math.max(minCol, widths[i] - perColCut)
+    if (compactIndices.length > 0) {
+      indices = compactIndices
+      widths = buildWidths(headers, rows, indices, policies, minCol, maxCol)
+      shrinkWidths(widths, indices, policies, options.maxWidth, minCol)
+      if (totalTableWidth(widths) > options.maxWidth && indices.length > 1) {
+        indices = [indices[0]]
+        widths = buildWidths(headers, rows, indices, policies, minCol, maxCol)
+        shrinkWidths(widths, indices, policies, options.maxWidth, minCol)
+      }
+    }
   }
 
-  const rowToLine = (row: string[]): string => row.map((v, i) => pad(v ?? "", widths[i])).join(" │ ")
-  const headerLine = rowToLine(headers)
-  const divider = widths.map((w: number) => "─".repeat(w)).join("─┼─")
+  return {
+    indices,
+    widths,
+    fits: totalTableWidth(widths) <= options.maxWidth,
+  }
+}
 
+export function formatTable(headers: string[], rows: string[][], options: TableFormatOptions = {}): StyledText {
+  if (headers.length === 0) return stringToStyledText("")
+
+  const resolved = {
+    maxWidth: options.maxWidth ?? 120,
+    density: options.density ?? "full",
+    emptyMessage: options.emptyMessage ?? "Нет данных для отображения.",
+    columns: options.columns ?? [],
+    compactColumns: options.compactColumns ?? [],
+  }
+
+  const layout = buildTableLayout(headers, rows, resolved)
+  const headersToRender = layout.indices.map((index) => headers[index])
+  const rowsToRender = rows.map((row) => layout.indices.map((index) => row[index] ?? ""))
+  const rowToLine = (row: string[]): string => row.map((value, index) => pad(value ?? "", layout.widths[index])).join(" │ ")
+  const headerLine = rowToLine(headersToRender)
+  const divider = layout.widths.map((width) => "─".repeat(width)).join("─┼─")
   const lines: StyledText[] = [
     t`${bg("#334155")(fg("#f8fafc")(bold(headerLine)))}`,
     t`${fg("#64748b")(divider)}`,
   ]
 
-  if (rows.length === 0) {
-    lines.push(t`${fg("#64748b")(truncate(emptyMessage, Math.max(12, maxWidth)))}`)
-    return joinStyledLines(lines)
+  if (rowsToRender.length === 0) {
+    lines.push(t`${fg("#64748b")(truncate(resolved.emptyMessage, Math.max(12, resolved.maxWidth)))}`)
+  } else {
+    lines.push(
+      ...rowsToRender.map((row, index) => {
+        const line = rowToLine(row)
+        return index % 2 === 0 ? t`${fg("#cbd5e1")(line)}` : t`${bg("#111827")(fg("#cbd5e1")(line))}`
+      }),
+    )
   }
 
-  lines.push(
-    ...rows.map((row, i) => {
-      const line = rowToLine(row)
-      return i % 2 === 0 ? t`${fg("#cbd5e1")(line)}` : t`${bg("#111827")(fg("#cbd5e1")(line))}`
-    }),
-  )
+  if (!layout.fits && layout.indices.length === 1) {
+    lines.push(t`${fg("#fbbf24")(truncate("Увеличьте окно для полной таблицы.", Math.max(12, resolved.maxWidth)))}`)
+  }
 
   return joinStyledLines(lines)
 }
 
-export function formatMenu(options: MenuOption[], selected: number, maxWidth = 80, maxVisible = 0): StyledText {
+export function formatMenu(options: MenuOption[], selected: number, config: MenuFormatOptions = {}): StyledText {
   if (options.length === 0) {
     return t`${fg("#94a3b8")("(пусто)")}`
   }
 
+  const density = config.density ?? "full"
+  const maxWidth = config.maxWidth ?? 80
+  const showIndicators = config.showIndicators ?? density !== "fallback"
+  const labelFloor = density === "full" ? 18 : density === "compact" ? 14 : 12
+  const labelCeiling = density === "full" ? 28 : density === "compact" ? 22 : 18
   const longestLabel = options.reduce((max, option) => Math.max(max, option.label.length), 0)
-  const labelWidth = Math.max(18, Math.min(longestLabel + 2, 28))
-  const hintWidth = Math.max(20, maxWidth - labelWidth - 8)
+  const labelWidth = Math.max(labelFloor, Math.min(longestLabel + 2, labelCeiling, Math.max(labelFloor, maxWidth - 8)))
+  const rawHintWidth = maxWidth - labelWidth - 8
+  const hintWidth = density === "fallback" || rawHintWidth < 10
+    ? 0
+    : density === "compact"
+      ? Math.max(12, rawHintWidth)
+      : Math.max(20, rawHintWidth)
 
-  // Determine visible window
-  const limit = maxVisible > 0 ? maxVisible : options.length
+  const limit = config.maxVisible && config.maxVisible > 0 ? config.maxVisible : options.length
   let start = 0
   if (options.length > limit) {
     start = Math.max(0, Math.min(selected - Math.floor(limit / 2), options.length - limit))
   }
   const end = Math.min(start + limit, options.length)
-
   const lines: StyledText[] = []
 
-  if (start > 0) {
+  if (showIndicators && start > 0) {
     lines.push(t`${fg("#64748b")(`  ▲ ещё ${start}`)}`)
   }
 
-  for (let i = start; i < end; i++) {
-    const opt = options[i]
-    const num = i < 9 ? `${i + 1}.` : "• "
-    const label = pad(opt.label, labelWidth)
-    const hint = opt.hint ? `  ${truncate(opt.hint, hintWidth)}` : ""
-    const activeBg = opt.destructive ? "#7f1d1d" : "#2563eb"
-    const activeFg = opt.destructive ? "#fee2e2" : "#eff6ff"
+  for (let index = start; index < end; index++) {
+    const option = options[index]
+    const num = index < 9 ? `${index + 1}.` : "• "
+    const label = pad(option.label, labelWidth)
+    const hint = option.hint && hintWidth > 0 ? `  ${truncate(option.hint, hintWidth)}` : ""
+    const activeBg = option.destructive ? "#7f1d1d" : "#2563eb"
+    const activeFg = option.destructive ? "#fee2e2" : "#eff6ff"
     const inline = `${label}${hint}`
 
-    if (i === selected) {
+    if (index === selected) {
       lines.push(t`${bg(activeBg)(fg(activeFg)(bold(` ${num} ${inline} `)))}`)
-    } else if (opt.destructive) {
+    } else if (option.destructive) {
       lines.push(t`${fg("#64748b")(` ${num}`)} ${fg("#f87171")(label)}${fg("#64748b")(hint)}`)
     } else {
       lines.push(t`${fg("#64748b")(` ${num}`)} ${fg("#cbd5e1")(label)}${fg("#64748b")(hint)}`)
     }
   }
 
-  if (end < options.length) {
+  if (showIndicators && end < options.length) {
     lines.push(t`${fg("#64748b")(`  ▼ ещё ${options.length - end}`)}`)
   }
 
   return joinStyledLines(lines)
 }
 
-export function formatDashboard(data: DashboardData, maxWidth = 72): StyledText {
-  const lines: StyledText[] = []
+export function formatDashboard(data: DashboardData, options: DashboardFormatOptions = {}): StyledText {
+  const density = options.density ?? "full"
+  const maxWidth = options.maxWidth ?? 72
 
-  const adminHealth = data.admins_total === 0
-    ? "нужен первый админ"
-    : `${data.admins_ready}/${data.admins_total} готовы`
-  const adminHealthColor = data.admins_ready === data.admins_total ? "#4ade80" : "#fbbf24"
+  const adminReady = data.admins_total === 0 ? "нужен первый" : `${data.admins_ready}/${data.admins_total} готовы`
+  const workerDetail = data.workers_total === 0
+    ? "можно создавать первые"
+    : `${data.workers_ready}/${data.workers_total} готовы`
+  const passwordDetail = data.workers_with_password > 0 ? ` • ${data.workers_with_password} с паролем` : ""
 
-  lines.push(
-    t`${fg("#94a3b8")("Админы  ")}${fg("#f8fafc")(bold(pad(String(data.admins_total), 4)))}${fg(adminHealthColor)(truncate(adminHealth, Math.max(16, maxWidth - 22)))}`,
-  )
-
-  const detailParts: string[] = []
-  if (data.workers_ready > 0) detailParts.push(`${data.workers_ready} готовы`)
-  if (data.workers_registered > 0) detailParts.push(`${data.workers_registered} готово`)
-  if (data.workers_invited > 0) detailParts.push(`${data.workers_invited} приглашено`)
-  if (data.workers_created > 0) detailParts.push(`${data.workers_created} создано`)
-  if (data.workers_with_password > 0) detailParts.push(`${data.workers_with_password} с паролем`)
-
-  const detail = detailParts.length > 0 ? detailParts.join(" / ") : ""
-
-  if (detail) {
-    lines.push(
-      t`${fg("#94a3b8")("Слоты   ")}${fg("#f8fafc")(bold(pad(String(data.workers_total), 4)))}${fg("#94a3b8")(truncate(detail, Math.max(16, maxWidth - 22)))}`,
-    )
-  } else {
-    lines.push(t`${fg("#94a3b8")("Слоты   ")}${fg("#f8fafc")(bold(String(data.workers_total)))}`)
+  if (density === "fallback") {
+    return t`${fg("#94a3b8")("A ")}${fg("#f8fafc")(bold(`${data.admins_ready}/${data.admins_total}`))}${fg("#64748b")(" • ")}${fg("#94a3b8")("S ")}${fg("#f8fafc")(bold(`${data.workers_ready}/${data.workers_total}`))}`
   }
 
-  if (data.admins_total === 0) {
-    lines.push(t`${fg("#fca5a5")("Нужно добавить первого администратора.")}`)
-  } else if (data.admins_ready < data.admins_total) {
-    lines.push(t`${fg("#fbbf24")("Не все админы готовы: проверьте токен и браузерный профиль.")}`)
-  } else if (data.workers_total === 0) {
-    lines.push(t`${fg("#93c5fd")("Система готова к созданию первых слотов.")}`)
-  } else {
-    lines.push(t`${fg("#4ade80")("Операционный контур выглядит готовым к работе.")}`)
-  }
+  const adminColor = data.admins_total > 0 && data.admins_ready === data.admins_total ? "#4ade80" : "#fbbf24"
+  const workerColor = data.workers_total > 0 && data.workers_ready === data.workers_total ? "#4ade80" : "#93c5fd"
+  const adminLine = `Админы ${data.admins_total} • ${adminReady}`
+  const workerLine = `Слоты ${data.workers_total} • ${workerDetail}${density === "full" ? passwordDetail : ""}`
 
-  return joinStyledLines(lines)
+  return joinStyledLines([
+    t`${fg(adminColor)(truncate(adminLine, Math.max(18, maxWidth)))}`,
+    t`${fg(workerColor)(truncate(workerLine, Math.max(18, maxWidth)))}`,
+  ])
 }
 
 export function joinStyledLines(lines: StyledText[]): StyledText {
