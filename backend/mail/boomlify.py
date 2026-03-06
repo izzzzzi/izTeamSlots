@@ -133,7 +133,7 @@ class BoomlifyProvider(MailProvider):
         if not email or not email_id:
             raise MailError(f"Unexpected Boomlify create response: {raw}")
 
-        return Mailbox(email=email, password=f"boomlify:{email_id}")
+        return Mailbox(email=email, password=f"{self.password_prefix}{email_id}")
 
     def inbox(self, mailbox: Mailbox) -> Inbox:
         email_id = self._extract_mailbox_id(mailbox)
