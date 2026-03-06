@@ -45,6 +45,12 @@
 ```text
 izTeamSlots/
 ├── app.py                          # Entrypoint: запускает UI
+├── bin/                            # CLI-бинарники
+│   └── izteamslots.mjs             # Кроссплатформенный entrypoint (Node.js)
+├── scripts/                        # Установочные скрипты
+│   ├── setup.mjs                   # Диспетчер: выбирает .sh или .cmd
+│   ├── setup.sh                    # Unix: uv + venv + Bun
+│   └── setup.cmd                   # Windows: uv + venv + Bun
 ├── backend/                        # Весь Python-бэкенд
 │   ├── __init__.py                 # PROJECT_ROOT
 │   ├── __main__.py                 # python -m backend
@@ -71,8 +77,9 @@ izTeamSlots/
 │       ├── screens/MainScreen.ts   # Главный экран
 │       ├── transport/stdioClient.ts # JSON-RPC клиент
 │       └── menus/                  # Меню, таблицы, форматирование
-├── accounts/                       # Данные аккаунтов (runtime)
-├── codex/                          # Codex-файлы (runtime)
+├── requirements.txt                # Python-зависимости
+├── ruff.toml                       # Конфиг линтера Python
+├── LICENSE                         # MIT
 └── README.md
 ```
 
@@ -100,7 +107,9 @@ npm install
 
 ### Настройка
 
-Создайте файл конфигурации `~/.izteamslots/.env`:
+API-ключи и провайдеры почты настраиваются прямо в приложении через меню **«Настройки»**. Значения сохраняются в `~/.izteamslots/.env`.
+
+Альтернативно — создайте файл вручную:
 
 ```bash
 # Linux / macOS
@@ -113,8 +122,6 @@ echo "BOOMLIFY_API_KEY=your_api_key" > "$env:USERPROFILE\.izteamslots\.env"
 ```
 
 Конфиг загружается в порядке приоритета: `~/.izteamslots/.env` > `./.env` > встроенный.
-
-Опциональные переменные:
 
 | Переменная | По умолчанию | Описание |
 |-----------|:------------:|----------|
