@@ -2,7 +2,7 @@
 
 # izTeamSlots
 
-**Менеджер ChatGPT Team слотов с авто-регистрацией через временную почту и обновлением Codex-сессий**
+**Локальный менеджер ChatGPT Team слотов: админы, инвайты, регистрация, перелогин и Codex-сессии**
 
 [![CI](https://github.com/izzzzzi/izTeamSlots/actions/workflows/ci.yml/badge.svg)](https://github.com/izzzzzi/izTeamSlots/actions/workflows/ci.yml)
 [![Release](https://github.com/izzzzzi/izTeamSlots/actions/workflows/release.yml/badge.svg)](https://github.com/izzzzzi/izTeamSlots/actions/workflows/release.yml)
@@ -18,111 +18,53 @@
 
 </div>
 
----
-
-## Обзор
-
-**izTeamSlots** — локальное приложение с архитектурой:
-
-- **Python backend** (бизнес-логика, браузерная автоматизация, storage);
-- **TypeScript OpenTUI frontend** (терминальный интерфейс оператора).
-
----
-
-## Возможности
-
-- Управление админами: добавить, перелогинить, удалить, открыть браузерный профиль.
-- Пайплайн слотов: `создать почту -> инвайт -> регистрация -> OAuth-логин`.
-- Перелогин слотов: одного выбранного или всех по очереди.
-- Codex-файлы: авто-сохранение `codex-<email>-Team.json` в аккаунт и в `./codex/`.
-- Doctor-проверка: валидация/восстановление файловой структуры аккаунтов при старте.
----
-
-## Структура проекта
-
-```text
-izTeamSlots/
-├── bin/                            # CLI-бинарники
-│   └── izteamslots.mjs             # Кроссплатформенный entrypoint (Node.js)
-├── scripts/                        # Установочные скрипты
-│   ├── setup.mjs                   # Диспетчер: выбирает .sh или .cmd
-│   ├── setup.sh                    # Unix: uv + venv + Bun
-│   └── setup.cmd                   # Windows: uv + venv + Bun
-├── backend/                        # Весь Python-бэкенд
-│   ├── __init__.py                 # PROJECT_ROOT
-│   ├── __main__.py                 # python -m backend
-│   ├── account_store.py            # CRUD аккаунтов (JSON storage)
-│   ├── mail/                       # Почтовые провайдеры (плагины)
-│   │   ├── __init__.py             # Фабрики: create_provider, create_slot_provider
-│   │   ├── base.py                 # MailProvider ABC, Mailbox, Mail, Inbox
-│   │   ├── boomlify.py             # Boomlify Temp Mail API
-│   │   ├── trickads.py             # trickadsagencyltd.com temp mail
-│   │   └── imap.py                 # Любой IMAP-сервер
-│   ├── openai_web_auth.py          # Браузерная автоматизация (SeleniumBase)
-│   ├── chatgpt_workspace_api.py    # ChatGPT Workspace API через браузер
-│   ├── slot_orchestrator.py        # Оркестратор пайплайна слотов
-│   ├── dto.py                      # DTO для UI
-│   ├── file_logger.py              # Логирование в файл
-│   ├── jobs.py                     # Задачи в потоках
-│   ├── rpc_protocol.py             # JSON-RPC протокол
-│   ├── rpc_server.py               # RPC-сервер (stdio)
-│   └── ui_facade.py                # Фасад между RPC и бизнес-логикой
-├── ui/                             # TypeScript TUI (OpenTUI)
-│   ├── package.json
-│   └── src/
-│       ├── main.ts                 # Entrypoint UI
-│       ├── screens/MainScreen.ts   # Главный экран
-│       ├── transport/stdioClient.ts # JSON-RPC клиент
-│       └── menus/                  # Меню, таблицы, форматирование
-├── requirements.txt                # Python-зависимости
-├── ruff.toml                       # Конфиг линтера Python
-├── LICENSE                         # MIT
-└── README.md
-```
-
----
-
-## Установка
-
-### npm (рекомендуется)
+## Quick Start
 
 ```bash
-npm cache clean --force && npm install -g izteamslots@latest
+npm install -g izteamslots@latest
+izteamslots
 ```
 
-Установщик автоматически поставит Python-зависимости (через [uv](https://docs.astral.sh/uv/)), [Bun](https://bun.sh) и всё остальное.
+Дальше:
+1. Откройте `Настройки` и задайте почтовый провайдер / API-ключ.
+2. Добавьте админа через ручной вход в браузере.
+3. Запустите создание слотов.
 
-> Chrome и chromedriver скачиваются автоматически при первом запуске через SeleniumBase.
+## Что умеет
 
-### Где лежат данные после `npm install -g`
+- Добавление и ручной перелогин админов.
+- Создание слотов: `почта -> инвайт -> регистрация -> OAuth`.
+- Перелогин одного слота или всех сразу.
+- Сохранение `codex-<email>-Team.json`.
+- Логи, локальные browser profiles и doctor-проверка.
+- Синхронизация workspace с локальными слотами.
 
-При глобальной установке runtime-данные сохраняются не в папку пакета, а в пользовательскую директорию `~/.izteamslots`.
+## Ограничения
 
-- `codex/`:
-  - Windows: `C:\Users\<USER>\.izteamslots\codex`
-  - macOS / Linux: `~/.izteamslots/codex`
-- `.env`:
-  - Windows: `C:\Users\<USER>\.izteamslots\.env`
-  - macOS / Linux: `~/.izteamslots/.env`
-- аккаунты и профили браузера:
-  - Windows: `C:\Users\<USER>\.izteamslots\accounts`
-  - macOS / Linux: `~/.izteamslots/accounts`
+- Вход админа сейчас поддерживается только в ручном режиме.
+- Проект зависит от текущего web UI OpenAI / ChatGPT.
+- Браузерная автоматизация может ломаться после изменений на стороне сайта.
+- Токены, профили браузера и `codex` хранятся локально.
+- Основные платформы: macOS и Windows.
+
+## Где лежат данные
+
+При глобальной установке данные сохраняются в `~/.izteamslots`.
+
+- `accounts/` — аккаунты и browser profiles
+- `codex/` — сохранённые codex-файлы
+- `logs/` — app/job logs
+- `.env` — локальные настройки
+
+Примеры:
+- Windows: `C:\Users\<USER>\.izteamslots`
+- macOS / Linux: `~/.izteamslots`
 
 Если вы обновляете старую версию, `codex`-файлы могут временно лежать ещё и внутри директории пакета. В актуальной версии основным путём считается именно `~/.izteamslots`.
 
-### Из исходников
+## Настройка
 
-```bash
-git clone https://github.com/izzzzzi/izTeamSlots.git
-cd izTeamSlots
-npm install
-```
-
-### Настройка
-
-API-ключи и провайдеры почты настраиваются прямо в приложении через меню **«Настройки»**. Значения сохраняются в `~/.izteamslots/.env`.
-
-Альтернативно — создайте файл вручную:
+Настройки можно задать через меню `Настройки` внутри приложения или вручную через `~/.izteamslots/.env`.
 
 ```bash
 # Linux / macOS
@@ -134,122 +76,38 @@ mkdir "$env:USERPROFILE\.izteamslots" -Force
 echo "BOOMLIFY_API_KEY=your_api_key" > "$env:USERPROFILE\.izteamslots\.env"
 ```
 
-Конфиг загружается в порядке приоритета: `~/.izteamslots/.env` > `./.env` > встроенный.
-
 | Переменная | По умолчанию | Описание |
 |-----------|:------------:|----------|
-| `BOOMLIFY_API_KEY` | — | API-ключ Boomlify (обязательно для слотов) |
-| `BOOMLIFY_DOMAIN` | авто | Домен для временных почт |
+| `BOOMLIFY_API_KEY` | — | API-ключ Boomlify |
+| `BOOMLIFY_DOMAIN` | авто | Домен временных почт |
 | `BOOMLIFY_TIME` | `permanent` | Время жизни ящика |
 | `SLOT_MAIL_PROVIDER` | `boomlify` | Провайдер почты для слотов |
 | `MAIL_PROVIDER` | `trickads` | Провайдер почты для админов |
 
-## Запуск
+## Почтовые провайдеры
+
+- В проект уже встроены `boomlify`, `trickads` и `imap`.
+- Можно добавлять собственные почтовые провайдеры.
+- Для этого нужно реализовать `MailProvider` и зарегистрировать его в backend.
+
+Подробности: [docs/providers.md](./docs/providers.md)
+
+## Документация
+
+- [docs/providers.md](./docs/providers.md) — встроенные и кастомные почтовые провайдеры
+- [docs/architecture.md](./docs/architecture.md) — структура проекта, архитектура и пайплайн слотов
+- [docs/troubleshooting.md](./docs/troubleshooting.md) — частые проблемы и способы диагностики
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — вклад в проект, проверки и тесты
+
+## Разработка
 
 ```bash
-izteamslots
+ruff check backend tests
+python -m unittest discover -s tests -p 'test_*.py'
+npm --prefix ui run test
+npm --prefix ui run typecheck
 ```
 
-Из исходников: `npm start`
+## Лицензия
 
-Это запустит OpenTUI frontend через **Bun**, который поднимет Python RPC backend (`python -m backend`) по `stdio`.
-
----
-
-## Архитектура
-
-```mermaid
-flowchart TD
-    A[izteamslots CLI] -->|bun| B[ui/src/main.ts]
-    B --> C[MainScreen.ts]
-    C --> D[StdioRpcClient]
-    D -->|spawns + stdio JSON-RPC| E[python -m backend]
-    E --> F[RPCServer]
-    F --> G[UIFacade]
-    G --> H[AccountStore]
-    G --> I[SlotManager]
-    I --> J[openai_web_auth]
-    I --> K[chatgpt_workspace_api]
-    I --> L[Mail Providers]
-```
-
-## Почтовые провайдеры (плагины)
-
-Система почты построена на плагинах — абстрактный класс `MailProvider` и конкретные реализации.
-
-```mermaid
-flowchart TD
-    MP[MailProvider — абстрактный класс]
-    MP --> B[BoomlifyProvider]
-    MP --> T[TrickAdsProvider]
-    MP --> I[IMAPProvider]
-
-    CF[create_provider] -->|MAIL_PROVIDER env| MP
-    CSP[create_slot_provider] -->|SLOT_MAIL_PROVIDER env| MP
-    CPM[create_provider_for_mailbox] -->|по формату password| MP
-
-    style MP fill:#1e3a5f,color:#fff
-    style B fill:#1a4731,color:#fff
-    style T fill:#1a4731,color:#fff
-    style I fill:#1a4731,color:#fff
-```
-
-### Встроенные провайдеры
-
-| Провайдер | Модуль | Описание | Env-переменные |
-|-----------|--------|----------|----------------|
-| `boomlify` | `mail/boomlify.py` | Boomlify Temp Mail API (по умолчанию для слотов) | `BOOMLIFY_API_KEY`, `BOOMLIFY_DOMAIN`, `BOOMLIFY_TIME` |
-| `trickads` | `mail/trickads.py` | trickadsagencyltd.com temp mail (по умолчанию для админов) | — |
-| `imap` | `mail/imap.py` | Любой IMAP-сервер | `IMAP_HOST`, `IMAP_PORT`, `IMAP_SSL`, `IMAP_FOLDER` |
-
-### Фабричные функции
-
-- `create_provider(name)` — создаёт провайдер по имени (или `MAIL_PROVIDER` env, по умолчанию `trickads`)
-- `create_slot_provider(name)` — для слотов (`SLOT_MAIL_PROVIDER` env, по умолчанию `boomlify`)
-- `create_provider_for_mailbox(mailbox)` — автоопределение по формату пароля (если `boomlify:<uuid>` → Boomlify)
-
-### Свой провайдер
-
-Наследуйте `MailProvider` из `backend/mail/base.py` и реализуйте два метода:
-
-```python
-from backend.mail.base import MailProvider, Mailbox, Inbox
-
-class MyProvider(MailProvider):
-    name = "my_provider"
-
-    def generate(self) -> Mailbox:
-        # создать временный ящик, вернуть Mailbox(email, password)
-        ...
-
-    def inbox(self, mailbox: Mailbox) -> Inbox:
-        # получить письма, вернуть Inbox(email, messages=[Mail(...), ...])
-        ...
-```
-
----
-
-## Пайплайн слотов
-
-```mermaid
-flowchart TD
-    S1[Создать временную почту] --> S2[Отправить инвайт через API]
-    S2 --> S3[Ожидать письмо с инвайт-ссылкой]
-    S3 --> S4[Регистрация по ссылке в браузере]
-    S4 --> S5[Ввод email / пароль / код подтверждения]
-    S5 --> S6[Заполнение имени и даты рождения]
-    S6 --> S7[Закрыть браузер регистрации]
-    S7 --> S8[OAuth PKCE логин]
-    S8 --> S9[Сохранить access_token и codex-файл]
-
-    style S1 fill:#1e3a5f,color:#fff
-    style S9 fill:#1a4731,color:#fff
-```
-
----
-
-## Важно
-
-- Проект хранит токены и браузерные профили локально на диске.
-- Не публикуйте папки `accounts/` и `codex/` в публичные репозитории.
-- Для стабильной работы перелогина у worker должен быть `openai_password`.
+MIT
