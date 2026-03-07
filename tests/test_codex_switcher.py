@@ -331,7 +331,7 @@ class CodexSwitcherServiceTests(unittest.TestCase):
             session_factory=lambda: FakeSession({}),
         )
 
-        result = service.refresh_now(auto_switch=False)
+        service.refresh_now(auto_switch=False)
 
         state = service.get_state()
         row = state["items"][0]
