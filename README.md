@@ -38,6 +38,7 @@ izteamslots
 - Сохранение `codex-<email>-Team.json`.
 - Логи, локальные browser profiles и doctor-проверка.
 - Синхронизация workspace с локальными слотами.
+- Свитч Codex-аккаунтов: мониторинг usage, авто-ротация auth.json при достижении лимита.
 
 ## Ограничения
 
@@ -83,6 +84,22 @@ echo "BOOMLIFY_API_KEY=your_api_key" > "$env:USERPROFILE\.izteamslots\.env"
 | `BOOMLIFY_TIME` | `permanent` | Время жизни ящика |
 | `SLOT_MAIL_PROVIDER` | `boomlify` | Провайдер почты для слотов |
 | `MAIL_PROVIDER` | `trickads` | Провайдер почты для админов |
+| `CODEX_SWITCHER_ENABLED` | `false` | Включить автосвитч Codex-аккаунтов |
+| `CODEX_SWITCHER_INTERVAL_MINUTES` | `15` | Интервал фоновой проверки usage (минуты) |
+
+## Свитч Codex-аккаунтов
+
+Встроенный механизм ротации Codex-аккаунтов. Все codex-файлы из пула (`<DATA_ROOT>/codex`) отображаются в разделе **Свитч аккаунтов** главного меню.
+
+Что доступно:
+- **Таблица аккаунтов** — active-статус, primary usage %, reset time, состояние токена.
+- **Ручное обновление** — запросить usage по всем аккаунтам.
+- **Ручное переключение** — выбрать аккаунт и записать его в `auth.json`.
+- **Первый готовый** — автоматически выбрать первый аккаунт без near-limit.
+- **Автосвитч** — фоновый шедулер проверяет usage и переключает `auth.json`, если `primary_used_percent >= 90%`. Включается через настройку `CODEX_SWITCHER_ENABLED`.
+- **Авто-рефреш токенов** — если access token истекает, обновляется через OAuth.
+
+Путь к `auth.json` определяется через `CODEX_HOME` или `~/.codex/auth.json`.
 
 ## Почтовые провайдеры
 
