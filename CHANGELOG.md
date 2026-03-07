@@ -1,3 +1,15 @@
+# [1.7.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.6.1...v1.7.0) (2026-03-07)
+
+
+### Bug Fixes
+
+* remove unused variable to satisfy ruff F841 ([e5cfb77](https://github.com/izzzzzi/izTeamSlots/commit/e5cfb773e4449037aa96f7f940c22cd7eb78ecdc))
+
+
+### Features
+
+* add Codex account switcher with auto-rotation ([70c8953](https://github.com/izzzzzi/izTeamSlots/commit/70c8953a6cde92127a17a5ea220bd8476bbc3447))
+
 ## [1.6.1](https://github.com/izzzzzi/izTeamSlots/compare/v1.6.0...v1.6.1) (2026-03-07)
 
 
