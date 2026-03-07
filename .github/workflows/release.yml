@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   issues: write
@@ -18,6 +22,7 @@ jobs:
     name: Package Check
     needs: ci
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,6 +35,7 @@ jobs:
     name: Semantic Release
     needs: [ci, package]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: github.repository == 'izzzzzi/izTeamSlots'
 
     steps:
