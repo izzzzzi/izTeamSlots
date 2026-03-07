@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/izzzzzi/izTeamSlots/compare/v1.6.0...v1.6.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* **ci:** install python deps before unit tests ([5c57d2a](https://github.com/izzzzzi/izTeamSlots/commit/5c57d2a5c9f22ed667d9cbdedacb69c465d136ba))
+
 # [1.6.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.5.5...v1.6.0) (2026-03-06)
 
 
