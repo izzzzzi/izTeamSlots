@@ -14,6 +14,7 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
     return [
       { id: "adm_add", label: "Добавить админа", hint: "Новый админ", description: "Добавить админа и выбрать способ входа." },
       { id: "adm_relogin", label: "Перелогинить", hint: "Обновить доступ", description: "Перелогинить выбранного админа." },
+      { id: "adm_sync_ws", label: "Синхронизировать WS", hint: "Удалить лишних", description: "Сверить workspace с локальными слотами и удалить лишние записи." },
       { id: "adm_open", label: "Открыть браузер", hint: "Открыть профиль", description: "Открыть браузерный профиль админа." },
       { id: "adm_delete", label: "Удалить", hint: "Удалить данные", description: "Удалить админа и его локальные файлы.", destructive: true },
     ]

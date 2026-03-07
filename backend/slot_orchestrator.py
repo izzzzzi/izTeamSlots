@@ -310,6 +310,106 @@ class SlotManager:
         api = self._get_api(page)
         return api.get_members()
 
+    def _build_workspace_sync_plan(
+        self,
+        members: list[dict[str, Any]],
+        pending_invites: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        local_emails = {w.email.strip().lower() for w in self._get_workers() if w.email}
+        admin_email = (self.admin_email or "").strip().lower()
+
+        extra_members: list[dict[str, str]] = []
+        extra_invites: list[dict[str, str]] = []
+        skipped: list[dict[str, str]] = []
+
+        for member in members:
+            email = str(member.get("email") or "").strip()
+            if not email:
+                continue
+            email_key = email.lower()
+            role = str(member.get("role") or "")
+
+            if email_key == admin_email:
+                skipped.append({"type": "member", "email": email, "reason": "self"})
+                continue
+            if role and role != "standard-user":
+                skipped.append({"type": "member", "email": email, "reason": f"role:{role}"})
+                continue
+            if email_key in local_emails:
+                continue
+
+            extra_members.append(
+                {
+                    "email": email,
+                    "id": str(member.get("id") or ""),
+                    "role": role or "standard-user",
+                }
+            )
+
+        for invite in pending_invites:
+            email = str(invite.get("email") or invite.get("email_address") or "").strip()
+            if not email:
+                continue
+            email_key = email.lower()
+            if email_key == admin_email:
+                skipped.append({"type": "invite", "email": email, "reason": "self"})
+                continue
+            if email_key in local_emails:
+                continue
+
+            extra_invites.append({"email": email})
+
+        return {
+            "admin_email": self.admin_email,
+            "workspace_id": self.account_id,
+            "local_workers_total": len(local_emails),
+            "members_total": len(members),
+            "pending_invites_total": len(pending_invites),
+            "extra_members": extra_members,
+            "extra_invites": extra_invites,
+            "skipped": skipped,
+            "removed_members": [],
+            "removed_invites": [],
+        }
+
+    def sync_workspace(self, *, dry_run: bool = True) -> dict[str, Any]:
+        page = self._ensure_admin_page()
+        api = self._get_api(page)
+
+        members = api.get_members()
+        pending_invites = api.get_pending_invites()
+        result = self._build_workspace_sync_plan(members, pending_invites)
+        result["dry_run"] = dry_run
+
+        if dry_run:
+            self._log(f"WS preview: лишних участников {len(result['extra_members'])}, лишних инвайтов {len(result['extra_invites'])}")
+            return result
+
+        for member in result["extra_members"]:
+            member_id = member.get("id")
+            email = member.get("email", "")
+            if not member_id:
+                self._log(f"[предупреждение] Пропускаю участника без id: {email}")
+                continue
+            api.delete_member(member_id)
+            result["removed_members"].append(email)
+            self._log(f"Удалён участник WS: {email}")
+
+        for invite in result["extra_invites"]:
+            email = invite.get("email", "")
+            if not email:
+                continue
+            api.delete_invite(email)
+            result["removed_invites"].append(email)
+            self._log(f"Удалён инвайт WS: {email}")
+
+        self._log(
+            "WS синхронизирован: "
+            f"участников удалено {len(result['removed_members'])}, "
+            f"инвайтов удалено {len(result['removed_invites'])}"
+        )
+        return result
+
     def register_slot(self, worker: WorkerAccount, invite_url: str) -> None:
         """Зарегистрировать приглашённый аккаунт через инвайт-ссылку."""
         mailbox = self._mailboxes.get(worker.email)

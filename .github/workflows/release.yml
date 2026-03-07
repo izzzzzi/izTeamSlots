@@ -14,9 +14,21 @@ jobs:
     name: Precheck
     uses: ./.github/workflows/ci.yml
 
+  package:
+    name: Package Check
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify npm package can be packed
+        run: npm pack --dry-run
+
   release:
     name: Semantic Release
-    needs: ci
+    needs: [ci, package]
     runs-on: ubuntu-latest
     if: github.repository == 'izzzzzi/izTeamSlots'
 

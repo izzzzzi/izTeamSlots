@@ -209,6 +209,18 @@ class UIFacade:
         manager.login_admin_manual()
         self.sync_codex_files()
 
+    def preview_workspace_sync(self, admin_email: str) -> dict[str, Any]:
+        manager = SlotManager(store=self.store, admin_email=admin_email, log=lambda _msg: None, headless=True)
+        try:
+            return manager.sync_workspace(dry_run=True)
+        finally:
+            manager.close()
+
+    def sync_workspace(self, admin_email: str, log: LogFunc) -> dict[str, Any]:
+        manager = SlotManager(store=self.store, admin_email=admin_email, log=log, headless=False)
+        self._replace_manager(manager)
+        return manager.sync_workspace(dry_run=False)
+
     def run_slots_pipeline(
         self,
         admin_email: str,

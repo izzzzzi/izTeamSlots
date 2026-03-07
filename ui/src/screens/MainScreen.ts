@@ -13,6 +13,12 @@ const EMPTY_STATE: AppState = {
 }
 
 type RpcJobResult = { job_id: string }
+type WorkspaceSyncPreview = {
+  admin_email: string
+  extra_members: Array<{ email?: string }>
+  extra_invites: Array<{ email?: string }>
+  skipped: Array<{ email?: string; reason?: string; type?: string }>
+}
 
 type PromptOption = {
   label: string
@@ -147,6 +153,7 @@ function getMenuOptionDescription(option: MenuOption | undefined): string {
 
   if (optionId === "adm_add") return "Добавить нового админа."
   if (optionId === "adm_relogin") return "Перелогинить админа."
+  if (optionId === "adm_sync_ws") return "Сверить workspace с локальными слотами и удалить лишнее."
   if (optionId === "adm_open") return "Открыть профиль админа."
   if (optionId === "adm_delete") return "Удалить админа."
 
@@ -1090,6 +1097,30 @@ export class MainScreen {
     }
 
     if (this.menuName === "confirm") {
+      const preview = this.menuCtx.sync_preview
+      if (preview) {
+        const lines = [
+          `Админ: ${preview.admin_email}`,
+          `Лишних участников: ${preview.extra_members.length}`,
+          `Лишних инвайтов: ${preview.extra_invites.length}`,
+        ]
+        if (preview.extra_members.length > 0) {
+          lines.push(`Members: ${preview.extra_members.slice(0, 4).join(", ")}`)
+          if (preview.extra_members.length > 4) {
+            lines.push(`Ещё участников: ${preview.extra_members.length - 4}`)
+          }
+        }
+        if (preview.extra_invites.length > 0) {
+          lines.push(`Invites: ${preview.extra_invites.slice(0, 4).join(", ")}`)
+          if (preview.extra_invites.length > 4) {
+            lines.push(`Ещё инвайтов: ${preview.extra_invites.length - 4}`)
+          }
+        }
+        if (preview.skipped.length > 0) {
+          lines.push(`Пропущено защищённых: ${preview.skipped.length}`)
+        }
+        return lines
+      }
       return [
         `Действие: ${this.menuCtx.confirm_action ?? "подтверждение"}`,
         `Объект: ${this.menuCtx.target ?? "не выбран"}`,
@@ -1237,6 +1268,10 @@ export class MainScreen {
         this.goToPicker("pick_admin", "admins", "relogin_admin", "Выберите админа")
         return
       }
+      if (optionId === "adm_sync_ws") {
+        this.goToPicker("pick_admin", "admins", "sync_workspace", "Выберите админа для синхронизации WS")
+        return
+      }
       if (optionId === "adm_open") {
         this.goToPicker("pick_admin", "admins", "open_admin", "Открыть браузер админа")
         return
@@ -1307,6 +1342,61 @@ export class MainScreen {
         await this.startJob("job.open_admin_browser", { email })
         return
       }
+      if (action === "sync_workspace") {
+        let preview: WorkspaceSyncPreview
+        try {
+          preview = await this.rpc.request<WorkspaceSyncPreview>("workspace.sync_preview", { admin_email: email })
+          this.backendOnline = true
+        } catch (error) {
+          this.pushLog(`Ошибка preview WS: ${String(error)}`)
+          this.render()
+          return
+        }
+
+        const extraMembers = preview.extra_members
+          .map((item) => item.email?.trim())
+          .filter((item): item is string => Boolean(item))
+        const extraInvites = preview.extra_invites
+          .map((item) => item.email?.trim())
+          .filter((item): item is string => Boolean(item))
+        const skipped = preview.skipped
+          .map((item) => {
+            const emailPart = item.email?.trim() || "?"
+            const reasonPart = item.reason ? ` (${item.reason})` : ""
+            return `${emailPart}${reasonPart}`
+          })
+          .filter((item): item is string => Boolean(item))
+
+        if (extraMembers.length === 0 && extraInvites.length === 0) {
+          this.pushLog(`WS уже синхронизирован: ${email}`)
+          if (skipped.length > 0) {
+            this.pushLog(`Пропущено защищённых записей: ${skipped.length}`)
+          }
+          this.menuName = parent
+          this.menuCtx = {}
+          await this.refreshState()
+          return
+        }
+
+        this.menuName = "confirm"
+        this.menuCtx = {
+          parent,
+          action: "sync_workspace",
+          admin_email: email,
+          confirm_action: "Синхронизация WS",
+          title: `Синхронизация WS: ${email}`,
+          target: `${email} • members ${extraMembers.length} • invites ${extraInvites.length}`,
+          sync_preview: {
+            admin_email: email,
+            extra_members: extraMembers,
+            extra_invites: extraInvites,
+            skipped,
+          },
+        }
+        this.selectedIndex = 1
+        this.render()
+        return
+      }
       if (action === "delete_admin") {
         this.goToConfirm(parent, "delete_admin", "Удаление админа", email)
         return
@@ -1371,6 +1461,14 @@ export class MainScreen {
           if (action === "delete_worker") {
             await this.rpc.request("worker.delete", { email: target })
             this.pushLog(`Удалён слот: ${target}`)
+          }
+          if (action === "sync_workspace") {
+            const adminEmail = this.menuCtx.admin_email
+            if (!adminEmail) throw new Error("admin_email не задан")
+            await this.startJob("job.sync_workspace", { admin_email: adminEmail })
+            this.menuName = parent
+            this.menuCtx = {}
+            return
           }
         } catch (error) {
           this.pushLog(`Ошибка: ${String(error)}`)

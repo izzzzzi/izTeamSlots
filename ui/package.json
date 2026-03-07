@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/main.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test tests"
   },
   "dependencies": {
     "@opentui/core": "^0.1.86"

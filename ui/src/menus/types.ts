@@ -59,6 +59,12 @@ export interface MenuContext {
   admin_email?: string
   target?: string
   confirm_action?: string
+  sync_preview?: {
+    admin_email: string
+    extra_members: string[]
+    extra_invites: string[]
+    skipped: string[]
+  }
 }
 
 export interface DashboardData {

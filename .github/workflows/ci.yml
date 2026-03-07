@@ -13,6 +13,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/ruff-action@v3
 
+  test-python:
+    name: Unit Tests (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - shell: bash
+        run: python -m unittest discover -s tests -p 'test_*.py'
+
   typecheck-ts:
     name: TypeScript (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -26,3 +37,14 @@ jobs:
         run: cd ui && bun install --frozen-lockfile 2>/dev/null || bun install
       - shell: bash
         run: cd ui && bun run typecheck
+
+  test-ts:
+    name: Unit Tests (TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - shell: bash
+        run: cd ui && bun install --frozen-lockfile 2>/dev/null || bun install
+      - shell: bash
+        run: cd ui && bun run test

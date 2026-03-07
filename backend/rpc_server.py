@@ -155,6 +155,19 @@ class RPCServer:
             )
             return make_success_response(req.request_id, {"job_id": job_id})
 
+        if m == "workspace.sync_preview":
+            admin_email = self._as_str_param(p, "admin_email")
+            result = self.facade.preview_workspace_sync(admin_email)
+            return make_success_response(req.request_id, result)
+
+        if m == "job.sync_workspace":
+            admin_email = self._as_str_param(p, "admin_email")
+            job_id = self._run_job(
+                f"Синхронизация WS: {admin_email}",
+                lambda ctx: self.facade.sync_workspace(admin_email, ctx.log),
+            )
+            return make_success_response(req.request_id, {"job_id": job_id})
+
         if m == "job.open_admin_browser":
             email = self._as_str_param(p, "email")
             job_id = self._run_job(
