@@ -1,10 +1,11 @@
-import type { AppState, DashboardData, MenuContext, MenuName, MenuOption, WorkerRow } from "./types"
+import type { AppState, CodexAccountRow, DashboardData, MenuContext, MenuName, MenuOption, WorkerRow } from "./types"
 
 export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[] {
   if (menuName === "main") {
     return [
       { id: "menu_admins", label: "Админы", hint: "Добавить, войти, открыть, удалить", description: "Перейти к действиям с администраторами." },
       { id: "menu_slots", label: "Слоты", hint: "Создать, перелогинить, открыть, удалить", description: "Перейти к действиям со слотами." },
+      { id: "menu_codex_switcher", label: "Свитч аккаунтов", hint: "Usage, токены, auth.json", description: "Проверить usage, активный auth.json и переключить Codex-аккаунт." },
       { id: "menu_settings", label: "Настройки", hint: "Почта, ключи, провайдер", description: "Изменить рабочие настройки." },
       { id: "menu_exit", label: "Выход", hint: "Закрыть TUI", description: "Завершить работу приложения." },
     ]
@@ -29,6 +30,16 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
     ]
   }
 
+  if (menuName === "codex_switcher") {
+    const enabled = state.codex_switcher_status?.enabled ? "вкл" : "выкл"
+    return [
+      { id: "codex_refresh", label: "Обновить usage", hint: "Проверить сейчас", description: "Обновить usage и статус токенов по всем codex-аккаунтам." },
+      { id: "codex_switch", label: "Переключить аккаунт", hint: "Выбрать вручную", description: "Выбрать аккаунт и записать его в активный Codex auth.json." },
+      { id: "codex_pick_first", label: "Первый готовый", hint: "Автовыбор", description: "Выбрать первый аккаунт без near-limit и сделать его активным." },
+      { id: "codex_settings", label: "Настройки автосвитча", hint: enabled, description: "Открыть настройки тумблера и интервала шедулера." },
+    ]
+  }
+
   if (menuName === "pick_admin") {
     return state.admins.map((a) => ({
       id: `pick_admin:${a.email}`,
@@ -44,6 +55,15 @@ export function getMenuOptions(menuName: MenuName, state: AppState): MenuOption[
       label: w.email,
       hint: humanizeWorkerStatus(w.status),
       description: `Выбрать слот ${w.email}.`,
+    }))
+  }
+
+  if (menuName === "pick_codex") {
+    return (state.codex_accounts ?? []).map((account) => ({
+      id: `pick_codex:${account.email}`,
+      label: account.email,
+      hint: humanizeCodexHint(account),
+      description: `Сделать активным Codex-аккаунт ${account.email}.`,
     }))
   }
 
@@ -132,6 +152,20 @@ export function getTable(menuName: MenuName, state: AppState, ctx: MenuContext):
     }
   }
 
+  if (menuName === "codex_switcher" || menuName === "pick_codex") {
+    return {
+      headers: ["Email", "Активен", "Primary", "Reset", "Token", "Usage"],
+      rows: (state.codex_accounts ?? []).map((account) => [
+        account.email,
+        account.is_active ? "Да" : "Нет",
+        formatPercent(account.primary_used_percent),
+        account.primary_resets_at ? formatShortDate(account.primary_resets_at) : "-",
+        humanizeTokenStatus(account.token_status),
+        humanizeUsageStatus(account.usage_status, account.near_limit),
+      ]),
+    }
+  }
+
   if (menuName === "confirm") {
     return {
       headers: ["Действие", "Объект"],
@@ -146,7 +180,7 @@ export function getTable(menuName: MenuName, state: AppState, ctx: MenuContext):
 }
 
 export function getHint(menuName: MenuName, _ctx: MenuContext): string {
-  if (menuName === "main") return "↑↓ или 1-4: выбор  Enter: открыть  r: обновить  q: выход"
+  if (menuName === "main") return "↑↓ или 1-5: выбор  Enter: открыть  r: обновить  q: выход"
   if (menuName === "confirm") return "Enter: подтвердить  Esc: отмена"
   return "↑↓ или 1-9: выбор  Enter: действие  Esc: назад  r: обновить  y: копировать лог"
 }
@@ -157,10 +191,53 @@ export function parentMenu(menuName: MenuName, ctx: MenuContext): MenuName {
     main: "main",
     admins: "main",
     slots: "main",
+    codex_switcher: "main",
     settings: "main",
     pick_admin: "admins",
     pick_worker: "slots",
+    pick_codex: "codex_switcher",
     confirm: "main",
   }
   return map[menuName]
+}
+
+function humanizeCodexHint(account: CodexAccountRow): string {
+  if (account.is_active) return "Активен"
+  if (account.near_limit) return "Near limit"
+  if (account.token_status === "invalid") return "Токен сломан"
+  if (account.usage_status === "error") return "Ошибка usage"
+  if (account.usage_status === "ok") return "Готов"
+  return "Не проверен"
+}
+
+function humanizeTokenStatus(status: string): string {
+  if (status === "fresh") return "Свежий"
+  if (status === "refreshed") return "Обновлён"
+  if (status === "expiring") return "Истекает"
+  if (status === "invalid") return "Ошибка"
+  return status || "-"
+}
+
+function humanizeUsageStatus(status: string, nearLimit: boolean): string {
+  if (status === "ok" && nearLimit) return "Near limit"
+  if (status === "ok") return "OK"
+  if (status === "error") return "Ошибка"
+  if (status === "idle") return "Не проверен"
+  return status || "-"
+}
+
+function formatPercent(value: number | null): string {
+  if (typeof value !== "number") return "-"
+  return `${Math.round(value)}%`
+}
+
+function formatShortDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
 }

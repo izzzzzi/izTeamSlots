@@ -148,6 +148,7 @@ function getMenuOptionDescription(option: MenuOption | undefined): string {
 
   if (optionId === "menu_admins") return "Открыть раздел админов."
   if (optionId === "menu_slots") return "Открыть раздел слотов."
+  if (optionId === "menu_codex_switcher") return "Открыть раздел свитча Codex-аккаунтов."
   if (optionId === "menu_settings") return "Открыть настройки."
   if (optionId === "menu_exit") return "Закрыть приложение."
 
@@ -162,10 +163,17 @@ function getMenuOptionDescription(option: MenuOption | undefined): string {
   if (optionId === "slots_open") return "Открыть профиль слота."
   if (optionId === "slots_delete") return "Удалить слот."
 
+  if (optionId === "codex_refresh") return "Обновить usage и статусы токенов."
+  if (optionId === "codex_switch") return "Выбрать и активировать Codex-аккаунт."
+  if (optionId === "codex_pick_first") return "Сделать активным первый готовый аккаунт."
+  if (optionId === "codex_settings") return "Открыть настройки автосвитча."
+
   if (optionId.startsWith("pick_admin:"))
     return "Выбрать этого админа."
   if (optionId.startsWith("pick_worker:"))
     return "Выбрать этот слот."
+  if (optionId.startsWith("pick_codex:"))
+    return "Выбрать этот Codex-аккаунт."
   if (optionId.startsWith("setting:"))
     return "Изменить значение настройки."
   if (optionId === "confirm_yes")
@@ -627,7 +635,7 @@ export class MainScreen {
       return getHint(this.menuName, this.menuCtx)
     }
     if (this.menuName === "main") {
-      return "↑↓/1-4 • Enter • r • q"
+      return "↑↓/1-5 • Enter • r • q"
     }
     if (this.menuName === "confirm") {
       return "Enter • Esc"
@@ -768,8 +776,10 @@ export class MainScreen {
   private getScreenTitle(): string {
     if (this.menuName === "admins") return "Админы"
     if (this.menuName === "slots") return "Слоты"
+    if (this.menuName === "codex_switcher") return "Свитч аккаунтов"
     if (this.menuName === "pick_admin") return "Выбор админа"
     if (this.menuName === "pick_worker") return "Выбор слота"
+    if (this.menuName === "pick_codex") return "Выбор Codex-аккаунта"
     if (this.menuName === "confirm") return "Подтверждение"
     return "Обзор"
   }
@@ -812,6 +822,21 @@ export class MainScreen {
           { minWidth: 6, priority: 4 },
         ],
         compactColumns: [0, 1],
+      }
+    }
+
+    if (this.menuName === "codex_switcher" || this.menuName === "pick_codex") {
+      return {
+        ...base,
+        columns: [
+          { required: true, minWidth: 18 },
+          { minWidth: 7, priority: 1 },
+          { minWidth: 7, priority: 2 },
+          { minWidth: 10, priority: 3 },
+          { minWidth: 8, priority: 4 },
+          { minWidth: 8, priority: 5 },
+        ],
+        compactColumns: [0, 2, 5],
       }
     }
 
@@ -972,6 +997,15 @@ export class MainScreen {
       ]
     }
 
+    const codexCount = this.state.codex_accounts?.length ?? 0
+    if (codexCount === 0) {
+      return [
+        "Откройте раздел «Свитч аккаунтов».",
+        "Перелогиньте аккаунты, чтобы появились codex-файлы.",
+        "После этого можно проверять usage и переключать активный Codex auth.json.",
+      ]
+    }
+
     const workersWithoutPassword = this.state.workers.filter((worker) => !worker.has_openai_password).length
     if (workersWithoutPassword > 0) {
       return [
@@ -1044,6 +1078,8 @@ export class MainScreen {
       lines.push(t`${fg("#cbd5e1")(truncateText("Сначала добавьте первого админа, затем выполните логин.", metrics.primaryWidth))}`)
     } else if (this.menuName === "slots") {
       lines.push(t`${fg("#cbd5e1")(truncateText("Слоты появятся после запуска пайплайна от выбранного админа.", metrics.primaryWidth))}`)
+    } else if (this.menuName === "codex_switcher" || this.menuName === "pick_codex") {
+      lines.push(t`${fg("#cbd5e1")(truncateText("Перелогиньте аккаунты, чтобы появились codex-файлы и usage-статусы.", metrics.primaryWidth))}`)
     } else if (this.menuName === "pick_admin" || this.menuName === "pick_worker") {
       lines.push(t`${fg("#cbd5e1")(truncateText("Нет доступных элементов для выбора. Вернитесь назад и подготовьте данные.", metrics.primaryWidth))}`)
     } else {
@@ -1070,6 +1106,17 @@ export class MainScreen {
       ]
     }
 
+    if (this.menuName === "codex_switcher") {
+      const accounts = this.state.codex_accounts ?? []
+      const ready = accounts.filter((item) => item.usage_status === "ok" && !item.near_limit && item.token_status !== "invalid").length
+      const status = this.state.codex_switcher_status
+      return [
+        `Codex-аккаунтов: ${accounts.length}. Готовы к переключению: ${ready}.`,
+        `Автосвитч: ${status?.enabled ? "включён" : "выключен"} • интервал: ${status?.interval_minutes ?? 15} мин.`,
+        `Активный auth.json: ${status?.active_email ?? "не определён"}`,
+      ]
+    }
+
     if (this.menuName === "pick_admin") {
       const option = this.menuOptions[this.selectedIndex]
       const email = option?.id.split(":", 2)[1]
@@ -1093,6 +1140,19 @@ export class MainScreen {
         `${worker.email}`,
         `Статус: ${statusLabel(worker.status)} • Профиль: ${boolLabel(hasFlag(worker, "has_browser_profile"))}`,
         `Админ: ${worker.admin_email ?? "не назначен"} • OpenAI-пароль: ${boolLabel(worker.has_openai_password)}`,
+      ]
+    }
+
+    if (this.menuName === "pick_codex") {
+      const option = this.menuOptions[this.selectedIndex]
+      const email = option?.id.split(":", 2)[1]
+      const account = this.state.codex_accounts?.find((item) => item.email === email)
+      if (!account) return ["Codex-аккаунт не найден в текущем состоянии."]
+
+      return [
+        `${account.email}`,
+        `Активный: ${boolLabel(account.is_active)} • Token: ${account.token_status}`,
+        `Primary: ${account.primary_used_percent ?? "-"} • Usage: ${account.usage_status}`,
       ]
     }
 
@@ -1227,9 +1287,10 @@ export class MainScreen {
     if (this.menuName === "main") {
       if (optionId === "menu_admins") this.menuName = "admins"
       else if (optionId === "menu_slots") this.menuName = "slots"
+      else if (optionId === "menu_codex_switcher") this.menuName = "codex_switcher"
       else if (optionId === "menu_settings") {
         this.menuName = "settings"
-        this.menuCtx = {}
+        this.menuCtx = { parent: "main" }
         this.selectedIndex = 0
         await this.loadSettings()
         return
@@ -1303,6 +1364,39 @@ export class MainScreen {
       }
       if (optionId === "slots_delete") {
         this.goToPicker("pick_worker", "slots", "delete_worker", "Удалить слот")
+        return
+      }
+    }
+
+    if (this.menuName === "codex_switcher") {
+      if (optionId === "codex_refresh") {
+        await this.performRpcAction("Проверка usage Codex", async () => {
+          const result = await this.rpc.request<{ summary?: { checked?: number } }>("codex_switcher.refresh")
+          const checked = Number(result?.summary?.checked ?? 0)
+          this.pushLog(`Codex usage обновлён${checked > 0 ? `: ${checked} аккаунтов` : ""}`)
+        })
+        return
+      }
+      if (optionId === "codex_switch") {
+        this.goToPicker("pick_codex", "codex_switcher", "switch_codex", "Выберите Codex-аккаунт")
+        return
+      }
+      if (optionId === "codex_pick_first") {
+        await this.performRpcAction("Автовыбор Codex-аккаунта", async () => {
+          const result = await this.rpc.request<{ active_email?: string; switched?: boolean }>("codex_switcher.pick_first_ready")
+          if (result?.switched && result.active_email) {
+            this.pushLog(`Codex переключён: ${result.active_email}`)
+          } else {
+            this.pushLog("Подходящий Codex-аккаунт не найден")
+          }
+        })
+        return
+      }
+      if (optionId === "codex_settings") {
+        this.menuName = "settings"
+        this.menuCtx = { parent: "codex_switcher" }
+        this.selectedIndex = 0
+        await this.loadSettings()
         return
       }
     }
@@ -1440,6 +1534,22 @@ export class MainScreen {
       }
     }
 
+    if (this.menuName === "pick_codex" && optionId.startsWith("pick_codex:")) {
+      const email = optionId.split(":", 2)[1]
+      const action = this.menuCtx.action
+      const parent = (this.menuCtx.parent ?? "codex_switcher") as MenuName
+
+      if (action === "switch_codex") {
+        this.menuName = parent
+        this.menuCtx = {}
+        await this.performRpcAction(`Переключение Codex: ${email}`, async () => {
+          await this.rpc.request("codex_switcher.switch_now", { email })
+          this.pushLog(`Активный Codex-аккаунт: ${email}`)
+        })
+        return
+      }
+    }
+
     if (this.menuName === "confirm") {
       const action = this.menuCtx.action
       const target = this.menuCtx.target
@@ -1512,6 +1622,24 @@ export class MainScreen {
       this.pushLog(`Ошибка: ${String(error)}`)
     }
     this.render()
+  }
+
+  private async performRpcAction(title: string, action: () => Promise<void>) {
+    if (this.busy) return
+    this.busy = true
+    this.busyTitle = title
+    this.render()
+    try {
+      await action()
+      this.backendOnline = true
+    } catch (error) {
+      this.pushLog(`Ошибка: ${String(error)}`)
+    } finally {
+      this.busy = false
+      this.busyTitle = ""
+      await this.refreshState(false)
+      this.render()
+    }
   }
 
   private onPaste(event: any) {

@@ -59,6 +59,8 @@ class RPCServer:
         ("BOOMLIFY_TIME", "Время жизни ящика"),
         ("SLOT_MAIL_PROVIDER", "Провайдер почты для слотов"),
         ("MAIL_PROVIDER", "Провайдер почты для админов"),
+        ("CODEX_SWITCHER_ENABLED", "Автосвитч Codex"),
+        ("CODEX_SWITCHER_INTERVAL_MINUTES", "Интервал проверки Codex (мин)"),
     ]
 
     @staticmethod
@@ -69,16 +71,30 @@ class RPCServer:
         items = []
         for key, label in self._SETTINGS_KEYS:
             value = os.environ.get(key, "")
-            masked = ""
-            if value:
-                masked = value[:4] + "***" + value[-4:] if len(value) > 12 else "***"
+            masked = self._mask_setting_value(key, value)
             items.append({"key": key, "label": label, "masked": masked})
         return {"items": items, "path": str(self._settings_path())}
+
+    @staticmethod
+    def _mask_setting_value(key: str, value: str) -> str:
+        if not value:
+            return ""
+        if "KEY" in key:
+            return value[:4] + "***" + value[-4:] if len(value) > 12 else "***"
+        return value
 
     def _set_setting(self, key: str, value: str) -> None:
         allowed = {k for k, _ in self._SETTINGS_KEYS}
         if key not in allowed:
             raise RPCError(-32602, "Unknown setting", {"key": key})
+        if key == "CODEX_SWITCHER_ENABLED" and value not in {"", "0", "1", "true", "false", "yes", "no", "on", "off"}:
+            raise RPCError(-32602, "Invalid setting", {"details": "CODEX_SWITCHER_ENABLED expects boolean-like value"})
+        if key == "CODEX_SWITCHER_INTERVAL_MINUTES":
+            try:
+                if int(value) <= 0:
+                    raise ValueError
+            except ValueError:
+                raise RPCError(-32602, "Invalid setting", {"details": "CODEX_SWITCHER_INTERVAL_MINUTES expects integer > 0"}) from None
 
         env_path = self._settings_path()
         env_path.parent.mkdir(parents=True, exist_ok=True)
@@ -225,6 +241,16 @@ class RPCServer:
                 raise RPCError(-32602, "Invalid params", {"details": "'value' must be string"})
             self._set_setting(key, value)
             return make_success_response(req.request_id, {"ok": True})
+
+        if m == "codex_switcher.refresh":
+            return make_success_response(req.request_id, self.facade.refresh_codex_switcher())
+
+        if m == "codex_switcher.switch_now":
+            email = self._as_str_param(p, "email")
+            return make_success_response(req.request_id, self.facade.switch_codex_account(email))
+
+        if m == "codex_switcher.pick_first_ready":
+            return make_success_response(req.request_id, self.facade.pick_first_codex_account())
 
         if m == "shutdown":
             self.jobs.wait_all(timeout=10)

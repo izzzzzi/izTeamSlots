@@ -8,7 +8,8 @@ from typing import Any, Callable
 
 from . import DATA_ROOT, PROJECT_ROOT
 from .account_store import AccountStore
-from .dto import AdminRow, AppStateDTO, WorkerRow
+from .codex_switcher import CodexSwitcherService
+from .dto import AdminRow, AppStateDTO, CodexAccountRow, CodexSwitcherStatusDTO, WorkerRow
 from .mail import Mailbox, create_provider_for_mailbox
 from .openai_web_auth import (
     close_browser as close_br,
@@ -31,9 +32,14 @@ def _has_profile_files(profile_dir: Path) -> bool:
 
 
 class UIFacade:
-    def __init__(self, store: AccountStore | None = None) -> None:
+    def __init__(
+        self,
+        store: AccountStore | None = None,
+        codex_switcher: CodexSwitcherService | None = None,
+    ) -> None:
         self.store = store or AccountStore()
         self.manager: SlotManager | None = None
+        self.codex_switcher = codex_switcher or CodexSwitcherService()
         self.bootstrap()
 
     def bootstrap(self) -> None:
@@ -47,8 +53,10 @@ class UIFacade:
 
         self.store.doctor()
         self.sync_codex_files()
+        self.codex_switcher.start()
 
     def shutdown(self) -> None:
+        self.codex_switcher.stop()
         self.sync_codex_files()
 
     def sync_codex_files(self) -> None:
@@ -66,6 +74,7 @@ class UIFacade:
                         dst.write_text(f.read_text())
 
     def get_state(self) -> dict[str, Any]:
+        codex_state = self.codex_switcher.get_state()
         raw_admins = self.store.list_admins()
         raw_workers = self.store.list_workers()
         admins = [
@@ -82,7 +91,31 @@ class UIFacade:
             )
             for w in raw_workers
         ]
-        return AppStateDTO(admins=admins, workers=workers).to_dict()
+        codex_accounts = [CodexAccountRow(**item) for item in codex_state.get("items", [])]
+        status_raw = codex_state.get("status", {})
+        status = CodexSwitcherStatusDTO(
+            enabled=bool(status_raw.get("enabled")),
+            interval_minutes=int(status_raw.get("interval_minutes") or 15),
+            last_run_at=status_raw.get("last_run_at"),
+            last_switch_at=status_raw.get("last_switch_at"),
+            active_email=status_raw.get("active_email"),
+            last_error=status_raw.get("last_error"),
+        )
+        return AppStateDTO(
+            admins=admins,
+            workers=workers,
+            codex_accounts=codex_accounts,
+            codex_switcher_status=status,
+        ).to_dict()
+
+    def refresh_codex_switcher(self) -> dict[str, Any]:
+        return self.codex_switcher.refresh_now(auto_switch=False)
+
+    def switch_codex_account(self, email: str) -> dict[str, Any]:
+        return self.codex_switcher.switch_now(email)
+
+    def pick_first_codex_account(self) -> dict[str, Any]:
+        return self.codex_switcher.pick_first_ready()
 
     def add_admin(self, email: str, password: str) -> dict[str, Any]:
         admin = self.store.add_admin(email, password)

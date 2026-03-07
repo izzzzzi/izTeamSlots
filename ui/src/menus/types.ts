@@ -2,9 +2,11 @@ export type MenuName =
   | "main"
   | "admins"
   | "slots"
+  | "codex_switcher"
   | "settings"
   | "pick_admin"
   | "pick_worker"
+  | "pick_codex"
   | "confirm"
 
 export interface MenuOption {
@@ -46,10 +48,35 @@ export interface SettingItem {
   masked: string
 }
 
+export interface CodexAccountRow {
+  email: string
+  is_active: boolean
+  primary_used_percent: number | null
+  primary_resets_at: string | null
+  secondary_used_percent: number | null
+  secondary_resets_at: string | null
+  usage_status: string
+  token_status: string
+  last_checked_at: string | null
+  last_error: string | null
+  near_limit: boolean
+}
+
+export interface CodexSwitcherStatus {
+  enabled: boolean
+  interval_minutes: number
+  last_run_at: string | null
+  last_switch_at: string | null
+  active_email: string | null
+  last_error: string | null
+}
+
 export interface AppState {
   admins: AdminRow[]
   workers: WorkerRow[]
   settings?: SettingItem[]
+  codex_accounts?: CodexAccountRow[]
+  codex_switcher_status?: CodexSwitcherStatus
 }
 
 export interface MenuContext {
@@ -65,6 +92,7 @@ export interface MenuContext {
     extra_invites: string[]
     skipped: string[]
   }
+  codex_email?: string
 }
 
 export interface DashboardData {

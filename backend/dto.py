@@ -91,9 +91,36 @@ class WorkerRow:
 
 
 @dataclass
+class CodexAccountRow:
+    email: str
+    is_active: bool
+    primary_used_percent: float | None
+    primary_resets_at: str | None
+    secondary_used_percent: float | None
+    secondary_resets_at: str | None
+    usage_status: str
+    token_status: str
+    last_checked_at: str | None
+    last_error: str | None
+    near_limit: bool
+
+
+@dataclass
+class CodexSwitcherStatusDTO:
+    enabled: bool
+    interval_minutes: int
+    last_run_at: str | None
+    last_switch_at: str | None
+    active_email: str | None
+    last_error: str | None
+
+
+@dataclass
 class AppStateDTO:
     admins: list[AdminRow]
     workers: list[WorkerRow]
+    codex_accounts: list[CodexAccountRow] | None = None
+    codex_switcher_status: CodexSwitcherStatusDTO | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
