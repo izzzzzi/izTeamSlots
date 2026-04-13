@@ -74,3 +74,35 @@ class TestJobManager(unittest.TestCase):
         finally:
             release.set()
             manager.wait_all()
+
+    def test_start_is_thread_safe_under_contention(self) -> None:
+        """Ensure only one job starts even with concurrent start() calls."""
+        manager = JobManager(self.emit, file_logger=self.logger)
+        barrier = threading.Barrier(10)
+        release = threading.Event()
+        results: list[str | None] = [None] * 10
+        errors: list[str | None] = [None] * 10
+
+        def handler(_ctx):
+            release.wait(timeout=5)
+
+        def try_start(index: int) -> None:
+            barrier.wait()
+            try:
+                job_id = manager.start(f"job-{index}", handler)
+                results[index] = job_id
+            except RuntimeError as e:
+                errors[index] = str(e)
+
+        threads = [threading.Thread(target=try_start, args=(i,)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+        release.set()
+        manager.wait_all()
+
+        started = [r for r in results if r is not None]
+        failed = [e for e in errors if e is not None]
+        self.assertEqual(len(started), 1, f"Expected exactly 1 job to start, got {len(started)}")
+        self.assertEqual(len(failed), 9, f"Expected 9 rejections, got {len(failed)}")

@@ -57,36 +57,36 @@ class JobManager:
             if self.busy:
                 raise RuntimeError(f"Задача уже выполняется: {self._active_job_id}")
 
-        job_id = uuid.uuid4().hex
-        job_logger = self._file_logger.create_job_logger(job_id, title)
-        self._emit("job.started", {"job_id": job_id, "title": title, "log_path": job_logger.rel_path})
+            job_id = uuid.uuid4().hex
+            job_logger = self._file_logger.create_job_logger(job_id, title)
+            self._emit("job.started", {"job_id": job_id, "title": title, "log_path": job_logger.rel_path})
 
-        def runner() -> None:
-            ctx = JobContext(job_id=job_id, _emit=self._emit, _logger=job_logger)
-            try:
-                result = handler(ctx)
-                job_logger.done(result)
-                self._emit("job.done", {"job_id": job_id, "result": result, "log_path": job_logger.rel_path})
-            except Exception as e:
-                message = str(e)
-                if len(message) > 1200:
-                    message = message[:1200] + "…"
-                tb = traceback.format_exc()
-                job_logger.error(message, traceback_text=tb)
-                self._emit(
-                    "job.error",
-                    {
-                        "job_id": job_id,
-                        "error": message,
-                        "log_path": job_logger.rel_path,
-                    },
-                )
+            def runner() -> None:
+                ctx = JobContext(job_id=job_id, _emit=self._emit, _logger=job_logger)
+                try:
+                    result = handler(ctx)
+                    job_logger.done(result)
+                    self._emit("job.done", {"job_id": job_id, "result": result, "log_path": job_logger.rel_path})
+                except Exception as e:
+                    message = str(e)
+                    if len(message) > 1200:
+                        message = message[:1200] + "…"
+                    tb = traceback.format_exc()
+                    job_logger.error(message, traceback_text=tb)
+                    self._emit(
+                        "job.error",
+                        {
+                            "job_id": job_id,
+                            "error": message,
+                            "log_path": job_logger.rel_path,
+                        },
+                    )
 
-        thread = threading.Thread(target=runner, daemon=True)
-        thread.start()
-        self._active_thread = thread
-        self._active_job_id = job_id
-        return job_id
+            thread = threading.Thread(target=runner, daemon=True)
+            thread.start()
+            self._active_thread = thread
+            self._active_job_id = job_id
+            return job_id
 
     def wait_all(self, timeout: float = 30) -> None:
         """Wait for the active job to finish."""
