@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import threading
 import uuid
@@ -77,6 +78,8 @@ class AccountStore:
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         tmp.replace(path)
+        if os.name != "nt":
+            os.chmod(path, 0o600)
 
     # --- Admin CRUD ---
 

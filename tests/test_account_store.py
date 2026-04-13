@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -84,3 +86,27 @@ class TestAccountStore(unittest.TestCase):
         self.assertEqual(rebuilt["email"], "slot@example.com")
         self.assertEqual(rebuilt["status"], "created")
         self.assertTrue(any("meta.json отсутствовал" in fix for fix in fixes))
+
+
+class TestAccountStorePermissions(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.base_dir = Path(self.temp_dir.name) / "accounts"
+        self.store = AccountStore(self.base_dir)
+
+    def tearDown(self) -> None:
+        self.temp_dir.cleanup()
+
+    @unittest.skipIf(os.name == "nt", "chmod not meaningful on Windows")
+    def test_meta_json_has_restrictive_permissions(self) -> None:
+        admin = self.store.add_admin("admin@example.com", "secret-password")
+        meta_path = self.store.admin_dir / admin.id / "meta.json"
+        mode = stat.S_IMODE(meta_path.stat().st_mode)
+        self.assertEqual(mode, 0o600, f"Expected 0600, got {oct(mode)}")
+
+    @unittest.skipIf(os.name == "nt", "chmod not meaningful on Windows")
+    def test_index_json_has_restrictive_permissions(self) -> None:
+        self.store.add_admin("admin@example.com", "pw")
+        index_path = self.store.admin_dir / "index.json"
+        mode = stat.S_IMODE(index_path.stat().st_mode)
+        self.assertEqual(mode, 0o600, f"Expected 0600, got {oct(mode)}")
