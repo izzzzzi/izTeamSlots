@@ -1,3 +1,17 @@
+## [1.7.1](https://github.com/izzzzzi/izTeamSlots/compare/v1.7.0...v1.7.1) (2026-04-13)
+
+
+### Bug Fixes
+
+* **codex-switcher:** eliminate redundant _load_accounts calls in pick_first_ready ([1024e95](https://github.com/izzzzzi/izTeamSlots/commit/1024e9582137aeaaea43484c94002455160ed37d))
+* deduplicate _decode_jwt_payload — single canonical implementation in codex_switcher ([5e579fe](https://github.com/izzzzzi/izTeamSlots/commit/5e579fe44caccf381d47d43484c56b4242589f87))
+* **jobs:** move thread assignment inside lock to prevent race condition ([40a3be2](https://github.com/izzzzzi/izTeamSlots/commit/40a3be2ce0937ae6eeef72c508c820d5de2d1029))
+* **logger:** use UTC timestamps consistent with rest of codebase ([302dfa1](https://github.com/izzzzzi/izTeamSlots/commit/302dfa1c2c5348fcab11c5606c5eb916ff0b5d26))
+* remove redundant Mailbox creation in relogin_worker_email ([883af9b](https://github.com/izzzzzi/izTeamSlots/commit/883af9bd7650c887056885514329b38d6bd5acab))
+* **security:** set chmod 0600 on meta.json and index.json files ([08c27af](https://github.com/izzzzzi/izTeamSlots/commit/08c27af9b330fae9f9a6316fd0fc7c6d38813506))
+* **security:** strengthen API key masking — show at most 4 chars for long keys ([545ac15](https://github.com/izzzzzi/izTeamSlots/commit/545ac15c4505fa94aff59ef5f1ede2b11a8819c2))
+* **workspace-api:** add pagination to get_members and get_pending_invites ([48229d2](https://github.com/izzzzzi/izTeamSlots/commit/48229d209a20593be9693df18f504dba9ee18ddc))
+
 # [1.7.0](https://github.com/izzzzzi/izTeamSlots/compare/v1.6.1...v1.7.0) (2026-03-07)
 
 
