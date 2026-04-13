@@ -80,7 +80,9 @@ class RPCServer:
         if not value:
             return ""
         if "KEY" in key:
-            return value[:4] + "***" + value[-4:] if len(value) > 12 else "***"
+            if len(value) <= 16:
+                return "***"
+            return value[:2] + "***" + value[-2:]
         return value
 
     def _set_setting(self, key: str, value: str) -> None:
