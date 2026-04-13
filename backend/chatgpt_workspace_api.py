@@ -91,20 +91,42 @@ class ChatGPTWorkspaceAPI:
         )
 
     def get_pending_invites(self) -> list[dict]:
-        """Получить список ожидающих инвайтов."""
-        data = self._request(
-            "GET",
-            f"/backend-api/accounts/{self.account_id}/invites?offset=0&limit=100",
+        """Получить список ожидающих инвайтов (с пагинацией)."""
+        return self._paginate(
+            f"/backend-api/accounts/{self.account_id}/invites",
+            items_key="invites",
         )
-        return data.get("invites", [])
 
     def get_members(self) -> list[dict]:
-        """Получить список участников workspace."""
-        data = self._request(
-            "GET",
-            f"/backend-api/accounts/{self.account_id}/users?offset=0&limit=100",
+        """Получить список участников workspace (с пагинацией)."""
+        return self._paginate(
+            f"/backend-api/accounts/{self.account_id}/users",
+            items_key="items",
+            fallback_key="users",
         )
-        return data.get("items", data.get("users", []))
+
+    def _paginate(
+        self,
+        path: str,
+        items_key: str,
+        fallback_key: str | None = None,
+        page_size: int = 100,
+        max_pages: int = 20,
+    ) -> list[dict]:
+        """Fetch all pages from a paginated endpoint."""
+        all_items: list[dict] = []
+        for page_num in range(max_pages):
+            offset = page_num * page_size
+            data = self._request("GET", f"{path}?offset={offset}&limit={page_size}")
+            items = data.get(items_key) or (data.get(fallback_key, []) if fallback_key else [])
+            all_items.extend(items)
+            if not data.get("has_more") and len(items) >= page_size:
+                continue
+            if len(items) < page_size:
+                break
+            if data.get("has_more") is False:
+                break
+        return all_items
 
     def delete_member(self, user_id: str) -> dict:
         """Удалить участника из workspace по user_id."""
