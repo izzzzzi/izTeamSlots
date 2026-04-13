@@ -442,5 +442,34 @@ class CodexSwitcherServiceTests(unittest.TestCase):
         self.assertEqual(auth_data["tokens"]["account_id"], "acc-a")
 
 
+class TestDecodeJwtPayload(unittest.TestCase):
+    def test_valid_jwt_returns_payload(self) -> None:
+        from backend.codex_switcher import decode_jwt_payload
+
+        token = make_jwt({"sub": "user123", "exp": 4102444800})
+        result = decode_jwt_payload(token)
+        self.assertEqual(result["sub"], "user123")
+
+    def test_empty_string_returns_empty_dict(self) -> None:
+        from backend.codex_switcher import decode_jwt_payload
+
+        self.assertEqual(decode_jwt_payload(""), {})
+
+    def test_malformed_token_returns_empty_dict(self) -> None:
+        from backend.codex_switcher import decode_jwt_payload
+
+        self.assertEqual(decode_jwt_payload("not.a.jwt"), {})
+        self.assertEqual(decode_jwt_payload("only-one-part"), {})
+
+    def test_non_dict_payload_returns_empty_dict(self) -> None:
+        from backend.codex_switcher import decode_jwt_payload
+
+        array_payload = base64.urlsafe_b64encode(b'[1,2,3]').decode().rstrip("=")
+        header = base64.urlsafe_b64encode(b'{"alg":"none"}').decode().rstrip("=")
+        sig = base64.urlsafe_b64encode(b'sig').decode().rstrip("=")
+        token = f"{header}.{array_payload}.{sig}"
+        self.assertEqual(decode_jwt_payload(token), {})
+
+
 if __name__ == "__main__":
     unittest.main()

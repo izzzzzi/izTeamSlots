@@ -26,6 +26,7 @@ from seleniumbase import Driver as create_driver
 
 from . import PROJECT_ROOT as _PROJECT_ROOT
 from .mail import Mailbox, MailError, MailProvider
+from .codex_switcher import CLIENT_ID, decode_jwt_payload
 
 LOGIN_URL = "https://chatgpt.com/auth/login_with"
 
@@ -706,18 +707,6 @@ def wait_for_browser_close(context: BrowserContext, log: Callable[[str], Any] | 
     _log("Браузер закрыт")
 
 
-def _decode_jwt_payload(token: str) -> dict | None:
-    try:
-        parts = token.split(".")
-        if len(parts) < 2:
-            return None
-        payload = parts[1]
-        payload += "=" * (4 - len(payload) % 4)
-        decoded = base64.urlsafe_b64decode(payload)
-        return json.loads(decoded)
-    except Exception:
-        return None
-
 
 def _activate_best_tab(driver: Any, preferred_url_parts: list[str] | None = None) -> None:
     preferred = [part for part in (preferred_url_parts or []) if part]
@@ -878,7 +867,7 @@ def _exchange_oauth_code(auth_code: str, redirect_uri: str, code_verifier: str) 
         "refresh_token": refresh_token,
     }
 
-    jwt_data = _decode_jwt_payload(id_token or access_token)
+    jwt_data = decode_jwt_payload(id_token or access_token)
     if jwt_data:
         auth_info = jwt_data.get("https://api.openai.com/auth", {})
         session_result["account_id"] = auth_info.get("chatgpt_account_id")

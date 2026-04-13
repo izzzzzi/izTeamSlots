@@ -45,7 +45,7 @@ def _parse_int(value: str | None, default: int) -> int:
     return parsed if parsed > 0 else default
 
 
-def _decode_jwt_payload(token: str) -> dict[str, Any]:
+def decode_jwt_payload(token: str) -> dict[str, Any]:
     if not token or "." not in token:
         return {}
     parts = token.split(".")
@@ -66,7 +66,7 @@ def _decode_jwt_payload(token: str) -> dict[str, Any]:
 
 
 def _parse_jwt_exp(token: str) -> datetime | None:
-    payload = _decode_jwt_payload(token)
+    payload = decode_jwt_payload(token)
     exp = payload.get("exp")
     if not isinstance(exp, (int, float)):
         return None
@@ -74,7 +74,7 @@ def _parse_jwt_exp(token: str) -> datetime | None:
 
 
 def _parse_id_token_claims(token: str) -> tuple[str | None, str | None]:
-    payload = _decode_jwt_payload(token)
+    payload = decode_jwt_payload(token)
     email = payload.get("email") if isinstance(payload.get("email"), str) else None
     auth_claims = payload.get("https://api.openai.com/auth")
     account_id = None
