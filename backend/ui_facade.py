@@ -277,7 +277,7 @@ class UIFacade:
                     log("Слот создан без OAuth-токена — нужен перелогин")
             except Exception as e:
                 log(f"Ошибка: {e}")
-        manager._close_admin_page()
+        manager.close_admin_page()
         log(f"Готово: {ok}/{count} слотов")
         self.sync_codex_files()
         return {"ok": ok, "total": count}

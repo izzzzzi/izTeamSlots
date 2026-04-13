@@ -95,6 +95,10 @@ class SlotManager:
                 pass
             self._admin_page = None
 
+    def close_admin_page(self) -> None:
+        """Закрыть браузер админа (публичный интерфейс)."""
+        self._close_admin_page()
+
     def _get_api(self, page: Page) -> ChatGPTWorkspaceAPI:
         """Создать ChatGPTWorkspaceAPI с привязкой к странице браузера."""
         if not self.account_id or not self.access_token:
