@@ -25,8 +25,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from seleniumbase import Driver as create_driver
 
 from . import PROJECT_ROOT as _PROJECT_ROOT
-from .mail import Mailbox, MailError, MailProvider
 from .codex_switcher import CLIENT_ID, decode_jwt_payload
+from .mail import Mailbox, MailError, MailProvider
 
 LOGIN_URL = "https://chatgpt.com/auth/login_with"
 
