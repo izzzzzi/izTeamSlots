@@ -823,7 +823,7 @@ def _prepare_oauth_authorize_url() -> tuple[str, HTTPServer, dict[str, str | Non
 
     server, redirect_uri, holder = _start_callback_server(state)
     params = urllib.parse.urlencode({
-        "client_id": "app_EMoamEEZ73f0CkXaXp7hrann",
+        "client_id": CLIENT_ID,
         "response_type": "code",
         "redirect_uri": redirect_uri,
         "scope": "openid email profile offline_access",
@@ -841,7 +841,7 @@ def _prepare_oauth_authorize_url() -> tuple[str, HTTPServer, dict[str, str | Non
 def _exchange_oauth_code(auth_code: str, redirect_uri: str, code_verifier: str) -> dict[str, Any]:
     token_data = {
         "grant_type": "authorization_code",
-        "client_id": "app_EMoamEEZ73f0CkXaXp7hrann",
+        "client_id": CLIENT_ID,
         "code": auth_code,
         "redirect_uri": redirect_uri,
         "code_verifier": code_verifier,
