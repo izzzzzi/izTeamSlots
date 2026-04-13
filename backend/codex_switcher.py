@@ -210,8 +210,7 @@ class CodexSwitcherService:
             if not target:
                 return {"active_email": active, "switched": False}
             self._activate_account(target)
-            rows = self._compose_rows(self._load_accounts())
-            active = self._detect_active_account(self._load_accounts())
+            active = self._detect_active_account(accounts)
             for row in rows:
                 row["is_active"] = row["email"] == active
             self._status["active_email"] = active

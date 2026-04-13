@@ -375,6 +375,43 @@ class CodexSwitcherServiceTests(unittest.TestCase):
         codex_data = json.loads((self.codex_dir / "codex-retry.json").read_text(encoding="utf-8"))
         self.assertEqual(codex_data["access_token"], new_access)
 
+    def test_pick_first_ready_returns_consistent_state_after_switch(self) -> None:
+        """After switching, returned active_email must match the auth.json on disk."""
+        token_a = make_jwt({"exp": 4102444800})
+        token_b = make_jwt({"exp": 4102444800})
+        write_codex(self.codex_dir / "codex-a.json", "a@example.com", "acc-a", token_a, "rt-a")
+        write_codex(self.codex_dir / "codex-b.json", "b@example.com", "acc-b", token_b, "rt-b")
+        write_auth(self.auth_path, "acc-a", token_a, "a@example.com")
+
+        usage = {
+            "acc-a": {"plan_type": "team", "rate_limit": {
+                "primary_window": {"used_percent": 10, "reset_at": "2026-03-07T05:00:00Z"},
+                "secondary_window": {"used_percent": 5, "reset_at": "2026-03-08T05:00:00Z"},
+            }},
+            "acc-b": {"plan_type": "team", "rate_limit": {
+                "primary_window": {"used_percent": 20, "reset_at": "2026-03-07T05:00:00Z"},
+                "secondary_window": {"used_percent": 5, "reset_at": "2026-03-08T05:00:00Z"},
+            }},
+        }
+        service = CodexSwitcherService(
+            codex_dir=self.codex_dir,
+            auth_path=self.auth_path,
+            session_factory=lambda: FakeSession(usage),
+        )
+
+        result = service.pick_first_ready()
+
+        self.assertTrue(result["switched"])
+        auth_data = json.loads(self.auth_path.read_text(encoding="utf-8"))
+        auth_account_id = auth_data["tokens"]["account_id"]
+        for path in self.codex_dir.glob("codex-*.json"):
+            codex = json.loads(path.read_text(encoding="utf-8"))
+            if codex.get("account_id") == auth_account_id:
+                self.assertEqual(result["active_email"], codex["email"])
+                break
+        else:
+            self.fail(f"No codex file found with account_id={auth_account_id}")
+
     def test_no_switch_when_active_below_threshold(self) -> None:
         token_a = make_jwt({"exp": 4102444800})
         token_b = make_jwt({"exp": 4102444800})
