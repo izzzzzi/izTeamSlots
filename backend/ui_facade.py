@@ -291,9 +291,9 @@ class UIFacade:
             log(f"{email} — нет openai_password")
             return False
 
-        mail = create_provider_for_mailbox(Mailbox(email=worker.email, password=worker.password))
+        mailbox = Mailbox(email=worker.email, password=worker.password)
+        mail = create_provider_for_mailbox(mailbox)
         try:
-            mailbox = Mailbox(email=worker.email, password=worker.password)
             profile_dir = self.store.get_worker_profile_dir(worker)
 
             page, session = oauth_login(
