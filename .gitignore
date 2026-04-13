@@ -30,3 +30,6 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/
+
+# Superpowers plans/specs (internal dev artifacts)
+docs/superpowers/
